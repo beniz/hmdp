@@ -1,5 +1,16 @@
 ## hmdp
-hmdp is a library and tools for solving Markov Decision Processes (MDPs) with hybrid discrete and/or continuous state-spaces. It includes various algorithms for computing optimal solutions. It is open-source software distributed under the [Apache License v2.0](http://www.apache.org/licenses/LICENSE-2.0).
+hmdp is a C++ library and tools for solving Markov Decision Processes (MDPs) with hybrid discrete and/or continuous state-spaces. It includes various algorithms for computing optimal solutions. It is open-source software distributed under the [Apache License v2.0](http://www.apache.org/licenses/LICENSE-2.0).
+
+Main functionalities:
+* library for building higher-level solutions that require the solving of MDPs, possibly with multi-dimensional continuous state-space;
+* embeds a solver built with the library, and with many options in the command line;
+* includes an optional customized PPDDL model library that allows to describe complex worlds in a simple manner, and solve them as MDPs with hybrid discrete / continuous state-space.
+* includes the optional ability to handle piecewise-linear functions with lpsolve library.
+* easy to enhance with new algorithms.
+
+Dependencies:
+* [gflags](https://code.google.com/p/gflags/) for command line parsing;
+* [lpsolve](http://sourceforge.net/projects/lpsolve/) for handling piecewise-linear functions (optional).
 
 ### Authors
 hmdp is designed and implemented by Emmanuel Benazera.
