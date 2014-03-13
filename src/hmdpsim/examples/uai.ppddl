@@ -1,0 +1,325 @@
+;; The "UAI Chanllenge" problem from
+;;   J. Bresina, R. Dearden, N. Meuleau, S. Ramakrishnan, D. Smith and
+;;   R. Washington, 2002, "Planning under continuous time and resource
+;;   uncertainty: A challenge for AI", UAI-2002
+;;
+;;                                         --> HiRes -> Done
+;;                                        |
+;;   start -> VisualServo  ->  Dig  ->  Drive  ->  Reco11 -> Done
+;;    |
+;;     --> Lo Res  ->  Rock Finder  ->  Reco2 -> Done
+;;
+;;   actions
+;;   0 - VisualServo
+;;   1 - Dig
+;;   2 - Drive
+;;   3 - Reco1
+;;   4 - HiRes
+;;   5 - LoRes
+;;   6 - Rock Finder
+;;   7 - Reco1-2
+;;   8 - stop
+;;   9 - get lores reward
+;; 
+;;  discrete states
+;;   0 - start
+;;   1 - VisualServo done
+;;   2 - Dig done
+;;   3 - LoRes reward (need this to collect the immediate reward of the
+;;                     LoRes action)
+;;   4 - Drive done
+;;   5 - LoRes done
+;;   6 - Rock finder done
+;;   7 - Reco1 done
+;;   8 - Reco2 done
+;;   9 - HiRes done
+;;  10 - done
+;;
+
+(define (domain uai5)
+  (:requirements :equality
+		 :fluents
+		 :existential-preconditions
+		 :disjunctive-preconditions
+		 :conditional-effects
+		 :probabilistic-effects
+		 :rewards)
+  
+  (:predicates 
+   (Start)                    ;; discrete states
+   (OrientationDone)
+   (DigDone)
+   (LoResDone)
+   (RockFinderDone)
+   (DriveDone)
+   (Reco1Done)
+   (Reco2Done)
+   (HiResDone)
+   (Done)
+   )
+
+  (:functions (OrientationMeanDuration) 
+	      (OrientationStdDevDuration)
+	      (OrientationMeanConsumption)
+	      (OrientationStdDevConsumption)
+	      (DigMeanDuration)
+	      (DigStdDevDuration)
+	      (DigMeanConsumption)
+	      (DigStdDevConsumption)
+	      (DriveMeanDuration)
+	      (DriveStdDevDuration)
+	      (DriveMeanConsumption)
+	      (DriveStdDevConsumption)
+	      (Reco1MeanDuration)
+	      (Reco1StdDevDuration)
+	      (Reco1MeanConsumption)
+	      (Reco1StdDevConsumption)
+	      (HiResMeanDuration)
+	      (HiResStdDevDuration)
+	      (HiResMeanConsumption)
+	      (HiResStdDevConsumption)
+	      (LoResMeanDuration)
+	      (LoResStdDevDuration)
+	      (LoResMeanConsumption)
+	      (LoResStdDevConsumption)
+	      (RockFinderMeanDuration)
+	      (RockFinderStdDevDuration)
+	      (RockFinderMeanConsumption)
+	      (RockFinderStdDevConsumption)
+	      (Reco2MeanDuration)
+	      (Reco2StdDevDuration)
+	      (Reco2MeanConsumption)
+	      (Reco2StdDevConsumption)
+	      (DiscretizationEpsilon)
+	      (DisczDurationInterval)
+	      (DisczConsumptionInterval)
+	      (DisczIntervalEnergy)
+	      (DisczIntervalTime)
+	      )
+
+  (:resources (Time 0 4500)
+	      (Energy 0 20))
+
+  (:action Orientation
+	   :precondition (and (Start)
+			      (>= Energy 10))
+	   :effect (probabilistic 1.0 (and (not Start)
+					   (OrientationDone)
+					   
+					   (and (decrease-probabilistic (Time) normal 
+									(OrientationMeanDuration) 
+									(OrientationStdDevDuration)
+									interval
+									(DisczDurationInterval)
+									(DiscretizationEpsilon))
+						(decrease-probabilistic (Energy) normal 
+									(OrientationMeanConsumption) 
+									(OrientationStdDevConsumption)
+									interval
+									(DisczConsumptionInterval)
+									(DiscretizationEpsilon))))))
+  
+  (:action Dig
+	   :precondition (and (OrientationDone)
+			      (>= Energy 0.1))
+	   :effect (probabilistic 1.0 (and
+				       (not OrientationDone)
+				       (DigDone)
+				       (decrease-probabilistic (Time) normal
+							       (DigMeanDuration)
+							       (DigStdDevDuration)
+							       interval
+							       (DisczDurationInterval)
+							       (DiscretizationEpsilon))
+				       (decrease-probabilistic (Energy) normal
+							       (DigMeanConsumption)
+							       (DigStdDevConsumption)
+							       interval
+							       (DisczConsumptionInterval)
+							       (DiscretizationEpsilon)))))
+
+  (:action Drive
+	   :precondition (and (DigDone)
+			      (>= Energy 0.6))
+	   :effect (probabilistic 1.0 (and
+				       (not DigDone)
+				       (DriveDone)
+				       (decrease-probabilistic (Time) normal
+							       (DriveMeanDuration)
+							       (DriveStdDevDuration)
+							       interval
+							       (DisczDurationInterval)
+							       (DiscretizationEpsilon))
+				       (decrease-probabilistic (Energy) normal
+							       (DriveMeanConsumption)
+							       (DriveStdDevConsumption)
+							       interval
+							       (DisczConsumptionInterval)
+							       (DiscretizationEpsilon)))))
+
+  (:action LoRes
+	   :precondition (and (Start)
+			      (>= Energy 0.02))
+	   :effect (probabilistic 1.0 (and
+				       (not Start)
+				       (LoResDone)
+				       (decrease-probabilistic (Time) normal
+							       (LoResMeanDuration)
+							       (LoresStdDevDuration)
+							       interval
+							       (DisczDurationInterval)
+							       (DiscretizationEpsilon))
+				       (decrease-probabilistic (Energy) normal
+							       (LoResMeanConsumption)
+							       (LoresStdDevConsumption)
+							       interval
+							       (DisczConsumptionInterval)
+							       (DiscretizationEpsilon)))))
+
+  (:action Reco1
+	   :precondition (and (DriveDone)
+			      (>= Time 1800)
+			      (>= Energy 3))
+	   :effect (probabilistic 1.0 (and
+				       (not DriveDone)
+				       (Reco1Done)
+				       (decrease-probabilistic (Time) normal
+							       (Reco1MeanDuration)
+							       (Reco1StdDevDuration)
+							       interval
+							       (DisczDurationInterval)
+							       (DiscretizationEpsilon))
+				       (decrease-probabilistic (Energy) normal
+							       (Reco1MeanConsumption)
+							       (Reco1StdDevConsumption)
+							       interval
+							       (DisczConsumptionInterval)
+							       (DiscretizationEpsilon)))))
+							       
+  (:action HiRes
+	   :precondition (and (DriveDone)
+			      (>= Energy 0.02))
+	   :effect (probabilistic 1.0 (and
+				       (not DriveDone)
+				       (HiResDone)
+				       (decrease-probabilistic (Time) normal
+							       (HiResMeanDuration)
+							       (HiresStdDevDuration)
+							       interval
+							       (DisczDurationInterval)
+							       (DiscretizationEpsilon))
+				       (decrease-probabilistic (Energy) normal
+							       (HiResMeanConsumption)
+							       (HiresStdDevConsumption)
+							       interval
+							       (DisczConsumptionInterval)
+							       (DiscretizationEpsilon)))))
+
+  
+  (:action RockFinder
+	   :precondition (and (LoResDone)
+			      (>= Energy 0.03))
+	   :effect (probabilistic 1.0 (and
+				       (not LoResDone)
+				       (RockFinderDone)
+				       (decrease-probabilistic (Time) normal
+							       (RockFinderMeanDuration)
+							       (RockFinderStdDevDuration)
+							       interval
+							       (DisczDurationInterval)
+							       (DiscretizationEpsilon))
+				       (decrease-probabilistic (Energy) normal
+							       (RockFinderMeanConsumption)
+							       (RockFinderStdDevConsumption)
+							       interval
+							       (DisczConsumptionInterval)
+							       (DiscretizationEpsilon)))))
+
+  (:action Reco2
+	   :precondition (and (RockFinderDone)
+			      (>= Time 2400)
+			      (>= Energy 3))
+	   :effect (probabilistic 1.0 (and
+				       (not RockFinderDone)
+				       (Reco2Done)
+				       (decrease-probabilistic (Time) normal
+							       (Reco2MeanDuration)
+							       (Reco2StdDevDuration)
+							       interval
+							       (DisczDurationInterval)
+							       (DiscretizationEpsilon))
+				       (decrease-probabilistic (Energy) normal
+							       (Reco2MeanConsumption)
+							       (Reco2StdDevConsumption)
+							       interval
+							       (DisczConsumptionInterval)
+							       (DiscretizationEpsilon)))))
+
+  (:action Stop
+	   :precondition (or (Reco1Done)
+			     (Reco2Done)
+			     (HiResDone))
+	   :effect (and (when (Reco1Done) (not Reco1Done))
+			(when (Reco2Done) (not Reco2Done))
+			(when (HiResDone) (not HiResDone))
+			(Done)))
+
+  ) ;;end domain
+
+(define (problem uai5-pb)
+  (:domain uai5)
+  (:init 
+   (Start)
+   (Time normal 4300 100 interval 200 0.01)
+   (Energy normal 18 2 interval 1 0.01)
+   (= DiscretizationEpsilon 0.01)
+   (= OrientationMeanDuration 1000)  ;;1000
+   (= OrientationStdDevDuration 500)  ;;500
+   (= OrientationMeanConsumption 5)
+   (= OrientationStdDevConsumption 2.5)
+   (= DigMeanDuration 60)
+   (= DigStdDevDuration 1)
+   (= DigMeanConsumption 0.05)
+   (= DigStdDevConsumption 0.02)
+   (= DriveMeanDuration 40)
+   (= DriveStdDevDuration 20)
+   (= DriveMeanConsumption 0.2)
+   (= DriveStdDevConsumption 0.2)
+   (= Reco1MeanDuration 600)
+   (= Reco1StdDevDuration 60)
+   (= Reco1MeanConsumption 2)
+   (= Reco1StdDevConsumption 0.5)
+   (= LoResMeanDuration 5)
+   (= LoResStdDevDuration 1)
+   (= LoResMeanConsumption 0.01)
+   (= LoResStdDevConsumption 1)
+   (= HiResMeanDuration 5)
+   (= HiResStdDevDuration 1)
+   (= HiResMeanConsumption 0.01)
+   (= HiResStdDevConsumption 1)
+   (= RockFinderMeanDuration 120)
+   (= RockFinderStdDevDuration 20)
+   (= RockFinderMeanConsumption 0.1)
+   (= RockFinderStdDevConsumption 0.01)
+   (= Reco2MeanDuration 600)
+   (= Reco2StdDevDuration 60)
+   (= Reco2MeanConsumption 2)
+   (= Reco2StdDevConsumption 0.5)
+   (= DisczDurationInterval 200)
+   (= DisczConsumptionInterval 1)
+   )
+  
+  (:goal LoResReward (LoResDone) (:goal-reward (when (>= Energy 0.02) 5)))
+
+  (:goal Reco1Reward (Reco1Done) (:goal-reward (when (and 
+						  (>= Time 1800)
+						  (>= Energy 3)) 100)))  ;;100
+  
+  (:goal Reco2Reward (Reco2Done) (:goal-reward (when (and
+						    (>= Time 2400)
+						    (>= Energy 3)) 50)))  ;;50
+  
+  (:goal HiResReward (HiResDone) (:goal-reward (when (>= Energy 0.02) 10)))  ;;10
+
+) ;;end problem
+  

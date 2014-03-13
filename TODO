@@ -1,0 +1,5 @@
+- move goals and related functions to BspTreeAlpha (from ValueFunction
+& ContinuousReward).
+- handle multiple probabilistic and conjunctive initial effects.
+- convert reward that is in an action (not needed yet since we're
+   using the goals only).
