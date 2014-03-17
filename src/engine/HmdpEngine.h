@@ -31,21 +31,27 @@ class HmdpEngine
 {
  public:
   /**
-   * \brief depth first search back up.
-   * @param initState the initial state to start the search from.
-   */
-  static void DepthFirstSearchBackup (HmdpState *initState);
-
-  /**
    * \brief depth first search back up that computes each discrete
    *        state's probability distribution over resources during the search.
    *        For this reason, this procedure is slower than the previous one.
    * @param initState the initial to start the search from.
+   * @param backups whether to perform backups.
+   * @param csd whether to propagate probability distribution forward with actions.
    * @sa HmdpState
    */
-  static void DepthFirstSearchBackupCSD (HmdpState *initState);
+  static void DepthFirstSearchBackupCSD (HmdpState *initState,
+					 const bool &backups=true,
+					 const bool &csd=false);
 
-  static void BspBackup (HmdpState *hst);
+  static void ValueIteration(HmdpState *initState,
+			     const double &gamma,
+			     const double &epsilon,
+			     const int &T);
+  
+  static void BspBackup (HmdpState *hst,
+			 double &residual,
+			 const bool &with_residual=false,
+			 const double &gamma=1.0);
 
   /* accessors */
   static size_t getNStates () { return HmdpEngine::m_nextStates.size (); }

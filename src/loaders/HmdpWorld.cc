@@ -35,7 +35,8 @@ std::map<std::string, ContinuousReward*> HmdpWorld::m_goals;
 std::map<double, HmdpState*> HmdpWorld::m_initialStates;
 double *HmdpWorld::m_maxInitialResource = NULL;
 double *HmdpWorld::m_minInitialResource = NULL;
-
+bool HmdpWorld::m_oneTimeReward = false;
+  
 void HmdpWorld::loadWorld (const char *filename)
 {
 #ifdef HAVE_PPDDL
@@ -308,7 +309,7 @@ ContinuousReward* HmdpWorld::sumGoalReward (const HmdpState &hst,
 	  const Goal &gl = HmdpPpddlLoader::getGoal ((*gi).first);
 	  
 	  /* if goals states are sink states */
-	  if (alreadyAchieved->size ())  /* Warning: this is a goal check at discrete state level. */
+	  if (m_oneTimeReward && alreadyAchieved->size ())  /* Warning: this is a goal check at discrete state level. */
 	    {
 	      if (alreadyAchieved->find (gl.getId ()) != alreadyAchieved->end ())
 		{

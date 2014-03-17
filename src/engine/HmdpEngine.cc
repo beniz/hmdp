@@ -16,7 +16,9 @@
 
 #include "HmdpEngine.h"
 #include "BackupOperations.h"
+#include "ValueFunctionOperations.h"
 #include <iomanip>
+#include <limits>
 
 namespace hmdp_engine
 {
@@ -30,101 +32,12 @@ std::chrono::time_point<std::chrono::system_clock> HmdpEngine::m_tend = std::chr
   
 int owidth = 15;
   
-void HmdpEngine::DepthFirstSearchBackup (HmdpState *hst)
+void HmdpEngine::DepthFirstSearchBackupCSD (HmdpState *hst,
+					      const bool &backups,
+					      const bool &csd)
 {
-  
-  //debug
-  /* std::cout << "[Debug]:HmdpEngine::DepthFirstSearchBackup: state:\n";                                                                                           
-     hst->print (std::cout); */
-  //debug
 
-  if (m_nbackups == -1)
-    {
-      std::cout << "Total time" << std::setw(owidth) << fixed << "#discs" << std::setw(owidth) << fixed << "#vf_backups"
-		<< std::setw(owidth) << fixed << "lbtime" << std::setw(owidth) << fixed << "mbtime" << std::setw(owidth) << fixed << "ntiles\n";
-      m_nbackups = 0;
-    }
-  
-  HmdpEngine::m_nextStates.insert (std::pair<HmdpState*, std::map<short, std::vector<HmdpState*> > > (hst, std::map<short, std::vector<HmdpState*> > ()));
-
-  /* iterate all actions in the world */
-  std::map<size_t, HybridTransition*>::const_iterator ai;
-  for (ai = HmdpWorld::actionsBegin (); ai != HmdpWorld::actionsEnd (); ai++)
-    {
-      
-      /* std::cout <<"[Debug]: testing action: "
-	 << HmdpPpddlLoader::getAction ((*ai).first).name () << std::endl; */
-
-      /* test if action is applicable to this state, check on the discrete state,
-	 and check on max resources (equivalent to not check on resources). */
-      if (HmdpWorld::isActionEnabled ((*ai).first, *hst))
-	{
-	  //debug
-	  /* std::cout << "[Debug]: action enabled: "
-	     << HmdpPpddlLoader::getAction ((*ai).first).name () << std::endl;
-	     (*ai).second->print (std::cout,
-	     HmdpWorld::getRscLowBounds (), 
-	     HmdpWorld::getRscHighBounds ()); */
-	  //debug
-	  
-	  /* iterate action discrete outcomes */
-	  HybridTransition *ht = (*ai).second;
-	  for (int i=0; i<ht->getNOutcomes (); i++)
-	    {
-	      /* apply discrete outcome effect */
-	      HmdpState *nextState = new HmdpState (*hst);
-	      HmdpWorld::applyNonResourceActionEffects ((*ai).first, nextState, i);
-	      //debug
-	      /* std::cout << "[Debug]: applied action effects:\n";
-		 nextState->print (std::cout); */
-	      //debug
-	      
-	      /* test if state has been already visited. */
-	      HmdpState *existingState = NULL;
-	      if ((existingState = HmdpEngine::hasBeenVisited (*nextState)) != NULL)
-		{
-		  HmdpEngine::addNextState (hst, ht->getActionIndex (), existingState);
-		  delete nextState;
-		  HmdpState::decrementStatesCounter ();
-		  break;  /* skip that outcome == depth reached here. */
-		}
-
-	      /* TODO: instantiate actions that could not be instantiated before */
-
-	      /* add state to successors */
-	      HmdpEngine::addNextState (hst, ht->getActionIndex (), nextState);
-
-	      /* dfs recursive backup */
-	      HmdpEngine::DepthFirstSearchBackup (nextState);
-	    }
-	  /* std::cout << "[Debug]: print state again:";
-	     hst->print (std::cout); */
-	}  /* end if enabled */
-    }  /* end for actions */
-
-  /* backup */
-  std::chrono::time_point<std::chrono::system_clock> bu_start, bu_end;
-  bu_start = std::chrono::system_clock::now();
-  HmdpEngine::BspBackup (hst);
-  bu_end = m_tend = std::chrono::system_clock::now();
-  int elapsed_ms = std::chrono::duration_cast<std::chrono::milliseconds>(m_tend-m_tstart).count();
-  int elapsed_bu_ms = std::chrono::duration_cast<std::chrono::milliseconds>(bu_end-bu_start).count();
-  m_nbackups++;
-  m_mean_backup_time += elapsed_bu_ms / 1000.0;
-  m_leaves += HmdpWorld::getFirstInitialState()->getVF()->countLeaves();
-  
-  // log total time, total number of backup states, total number of vf backups, last state backup time, mean state backup time
-  std::cout << "\r" << std::setprecision(5) << elapsed_ms/1000.0 << std::setw(owidth) << fixed << m_nbackups << std::setw(owidth) << fixed << m_vf_nbackups
-	    << std::setw(owidth) << fixed << elapsed_bu_ms / 1000.0 << std::setw(owidth) << fixed << m_mean_backup_time / static_cast<double>(m_nbackups) << std::setw(10) << m_leaves;
-  
-  //debug
-  /*std::cout << "[Debug]:backup done for state:\n";
-    hst->print (std::cout);*/
-  //debug
-}
-
-void HmdpEngine::DepthFirstSearchBackupCSD (HmdpState *hst)
-{
+  double residual = 0.0; // unused in dfs.
   if (m_nbackups == -1)
     {
       std::cout << "Total time" << std::setw(owidth) << fixed << "#discs" << std::setw(owidth) << fixed << "#vf_backups"
@@ -158,37 +71,43 @@ void HmdpEngine::DepthFirstSearchBackupCSD (HmdpState *hst)
 		  HmdpEngine::addNextState (hst, ht->getActionIndex (), existingState);
 		  delete nextState;
 		  HmdpState::decrementStatesCounter ();
-		  
-		  /* 
-		     update existing state's distribution over resources:
-		     - compute the arrival state distribution,
-		     - add it to the existing state's distribution.
-		  */
-		  HybridTransitionOutcome *hto = ht->getOutcome (i);
-		  ContinuousStateDistribution *nextStateCSD
-		    = ContinuousStateDistribution::frontUp (hst->getCSD (), 
-								   hto->getContTransition (),
-								   HmdpWorld::getRscLowBounds (),
-								   HmdpWorld::getRscHighBounds (),
-								   hto->getOutcomeProbability ());
-		  ContinuousStateDistribution *stateCSD
-		    = ContinuousStateDistribution::addContinuousStateDistributions (nextStateCSD,
-										    existingState->getCSD (),
-										    HmdpWorld::getRscLowBounds (),
-										    HmdpWorld::getRscHighBounds ());
-		  existingState->setCSD (stateCSD); /* previous csd is automatically deleted */
 
+		  if (csd)
+		    {
+		      /* 
+			 update existing state's distribution over resources:
+			 - compute the arrival state distribution,
+			 - add it to the existing state's distribution.
+		      */
+		      HybridTransitionOutcome *hto = ht->getOutcome (i);
+		      ContinuousStateDistribution *nextStateCSD
+			= ContinuousStateDistribution::frontUp (hst->getCSD (), 
+								hto->getContTransition (),
+								HmdpWorld::getRscLowBounds (),
+								HmdpWorld::getRscHighBounds (),
+								hto->getOutcomeProbability ());
+		      ContinuousStateDistribution *stateCSD
+			= ContinuousStateDistribution::addContinuousStateDistributions (nextStateCSD,
+											existingState->getCSD (),
+											HmdpWorld::getRscLowBounds (),
+											HmdpWorld::getRscHighBounds ());
+		      existingState->setCSD (stateCSD); /* previous csd is automatically deleted */
+		    }
+		  
 		  break;  /* skip that outcome == depth reached here. */
 		}
 
-	      /* compute new state's distribution over resources */
-	      HybridTransitionOutcome *hto = ht->getOutcome (i);
-	      ContinuousStateDistribution *nextStateCSD 
-		= ContinuousStateDistribution::frontUp (hst->getCSD (), hto->getContTransition (),
-							       HmdpWorld::getRscLowBounds (),
-							       HmdpWorld::getRscHighBounds (),
-							       hto->getOutcomeProbability ());
-	      nextState->setCSD (nextStateCSD);
+	      if (csd)
+		{
+		  /* compute new state's distribution over resources */
+		  HybridTransitionOutcome *hto = ht->getOutcome (i);
+		  ContinuousStateDistribution *nextStateCSD 
+		    = ContinuousStateDistribution::frontUp (hst->getCSD (), hto->getContTransition (),
+							    HmdpWorld::getRscLowBounds (),
+							    HmdpWorld::getRscHighBounds (),
+							    hto->getOutcomeProbability ());
+		  nextState->setCSD (nextStateCSD);
+		}
 
 	      /* TODO: instantiate actions that could not be instantiated before */
 
@@ -196,32 +115,83 @@ void HmdpEngine::DepthFirstSearchBackupCSD (HmdpState *hst)
 	      HmdpEngine::addNextState (hst, ht->getActionIndex (), nextState);
 
 	      /* dfs recursive backup */
-	      HmdpEngine::DepthFirstSearchBackupCSD (nextState);
+	      HmdpEngine::DepthFirstSearchBackupCSD (nextState,backups,csd);
 	    }
 	}  /* end if enabled */
     }  /* end for actions */
 
   /* backup */
-  std::chrono::time_point<std::chrono::system_clock> bu_start, bu_end;
-  bu_start = std::chrono::system_clock::now();
-  HmdpEngine::BspBackup (hst);
-  bu_end = m_tend = std::chrono::system_clock::now();
-  int elapsed_ms = std::chrono::duration_cast<std::chrono::milliseconds>(m_tend-m_tstart).count();
-  int elapsed_bu_ms = std::chrono::duration_cast<std::chrono::milliseconds>(bu_end-bu_start).count();
-  m_nbackups++;
-  m_mean_backup_time += elapsed_bu_ms / 1000.0;
+  if (backups)
+    {
+      std::chrono::time_point<std::chrono::system_clock> bu_start, bu_end;
+      bu_start = std::chrono::system_clock::now();
+      HmdpEngine::BspBackup (hst,residual);
+      bu_end = m_tend = std::chrono::system_clock::now();
+      int elapsed_ms = std::chrono::duration_cast<std::chrono::milliseconds>(m_tend-m_tstart).count();
+      int elapsed_bu_ms = std::chrono::duration_cast<std::chrono::milliseconds>(bu_end-bu_start).count();
+      m_nbackups++;
+      m_mean_backup_time += elapsed_bu_ms / 1000.0;
   
-  // log total time, total number of backup states, total number of vf backups, last state backup time, mean state backup time
-  std::cout << std::setprecision(5) << elapsed_ms/1000.0 << std::setw(owidth) << fixed << m_nbackups << std::setw(owidth) << fixed << m_vf_nbackups
-	    << std::setw(owidth) << fixed << elapsed_bu_ms / 1000.0 << std::setw(owidth) << fixed << m_mean_backup_time / static_cast<double>(m_nbackups) << std::endl;
-  
+      // log total time, total number of backup states, total number of vf backups, last state backup time, mean state backup time
+      std::cout << std::setprecision(5) << elapsed_ms/1000.0 << std::setw(owidth) << fixed << m_nbackups << std::setw(owidth) << fixed << m_vf_nbackups
+		<< std::setw(owidth) << fixed << elapsed_bu_ms / 1000.0 << std::setw(owidth) << fixed << m_mean_backup_time / static_cast<double>(m_nbackups) << std::endl;
+    }
+      
   //debug
   /* std::cout << "[Debug]:backup done for state:\n";
      hst->print (std::cout); */
   //debug
 }
 
-void HmdpEngine::BspBackup (HmdpState *hst)
+void HmdpEngine::ValueIteration(HmdpState *initState,
+				const double &gamma,
+				const double &epsilon,
+				const int &T)
+{
+  int i = 0;
+  //HmdpState *hst = initState;
+  /*HmdpEngine::m_nextStates.insert (std::pair<HmdpState*, std::map<short, std::vector<HmdpState*> > > (hst, std::map<short, std::vector<HmdpState*> > ()));
+    HmdpEngine::addNextState(hst,1,hst);*/
+
+  HmdpEngine::DepthFirstSearchBackupCSD(initState,false,false);
+  
+  double residual = std::numeric_limits<double>::min();
+  while(i == 0 || residual > epsilon)
+    {
+      //debug
+      /*std::string state_filename_dat = "vi_iter_" + std::to_string(i) + ".dat";
+      BspTree::m_plotPointFormat = GnuplotF;
+      ofstream output_state0_values_gp (state_filename_dat.c_str(), ios::out);
+      double steps[2] = {1.0,1.0};
+      hst->getVF ()->plotNDPointValues (output_state0_values_gp, steps,
+					HmdpWorld::getRscLowBounds (),
+					HmdpWorld::getRscHighBounds ());
+					output_state0_values_gp.close();*/
+      //debug
+
+      std::map<HmdpState*,std::map<short,std::vector<HmdpState*> > >::iterator mit
+	= HmdpEngine::m_nextStates.begin();
+      while(mit!=HmdpEngine::m_nextStates.end())
+	{
+	  HmdpState *hst = (*mit).first;
+	  residual = std::numeric_limits<double>::min();
+	  HmdpEngine::BspBackup(hst,residual,true,gamma);
+	  ++mit;
+	}
+      double expectation = initState->getVF()->computeExpectation(initState->getCSD(),
+								  HmdpWorld::getRscLowBounds (),
+								  HmdpWorld::getRscHighBounds ());
+      std::cerr << "iteration #" << i << " -- residual: " << residual << " -- expected: " << expectation << std::endl;
+      ++i;
+      if (T > 0 && i >= T)
+	break;
+    }
+}
+
+void HmdpEngine::BspBackup (HmdpState *hst,
+			    double &residual,
+			    const bool &with_residual,
+			    const double &gamma)
 { 
   ValueFunction *maxActionVF 
     = new PiecewiseConstantValueFunction (static_cast<int> (HmdpWorld::getNResources ()),
@@ -253,7 +223,13 @@ void HmdpEngine::BspBackup (HmdpState *hst)
 	  for (int i=0; i<ht->getNOutcomes (); i++)  /* fill up array */
 	    {
 	      HmdpState *nextState =  HmdpEngine::getNextState (hst, ht->getActionIndex (), i);
-	      discStatesVF[i] = nextState->getVF ();
+	      if (gamma == 1.0)
+		discStatesVF[i] = nextState->getVF ();
+	      else
+		{
+		  discStatesVF[i] = static_cast<ValueFunction*>(BspTreeOperations::copyTree(nextState->getVF()));
+		  discStatesVF[i]->multiplyByScalar(gamma);
+		}
 	      HybridTransitionOutcome *hto = ht->getOutcome (i);
 	      ContinuousReward *actionGoalR = HmdpEngine::computeRewardFromGoals (hto, nextState);
 	      if (actionGoalR)
@@ -270,6 +246,11 @@ void HmdpEngine::BspBackup (HmdpState *hst)
 	  ValueFunction *htVF = BackupOperations::backUp (*ht, discStatesVF, 
 							  HmdpWorld::getRscLowBounds (), 
 							  HmdpWorld::getRscHighBounds ());
+	  if (gamma != 1.0)
+	    {
+	      for (int i=0; i<ht->getNOutcomes (); i++)  /* fill up array */
+		BspTree::deleteBspTree(discStatesVF[i]);
+	    }
 	  delete []discStatesVF;
 	  m_vf_nbackups++;
 	  
@@ -307,11 +288,28 @@ void HmdpEngine::BspBackup (HmdpState *hst)
   
   /* set hybrid state vf */
   //debug
-  /* std::cout << "[Debug]::HmdpEngine::BspBackup: maxActionVF:\n";
-     maxActionVF->print (std::cout, HmdpWorld::getRscLowBounds (),
-     HmdpWorld::getRscHighBounds ());
-     std::cout << "set it to state: " << hst->getStateIndex () << std::endl; */
+  /*std::cout << "[Debug]::HmdpEngine::BspBackup: maxActionVF:\n";
+  maxActionVF->print (std::cout, HmdpWorld::getRscLowBounds (),
+  HmdpWorld::getRscHighBounds ());*/
+  //std::cout << "set it to state: " << hst->getStateIndex () << std::endl;
   //debug
+
+  if (with_residual)
+    {
+      ValueFunction *rVF = ValueFunctionOperations::subtractValueFunctions(hst->getVF(),maxActionVF,
+									   HmdpWorld::getRscLowBounds (),
+									   HmdpWorld::getRscHighBounds ());
+
+      /*std::cout << "[Debug]::HmdpEngine::BspBackup: rVF:\n";
+      rVF->print (std::cout, HmdpWorld::getRscLowBounds (),
+      HmdpWorld::getRscHighBounds ());*/
+      
+      rVF->maxAbsValue(residual,
+		       HmdpWorld::getRscLowBounds (),
+		       HmdpWorld::getRscHighBounds ());
+      //std::cout << "residual: " << residual << std::endl;
+      BspTree::deleteBspTree(rVF);
+    }
   
   hst->setVF (maxActionVF);
 }

@@ -79,7 +79,7 @@ class ContinuousTransition : public BspTree
    * @param high the domain upper bounds.
    * @param epsilon threshold for the discretization, for each tile, for each dimension.
    * @param intervals interval for the discretization, for each tile, for each dimension
-   *                  !!NOTE!!: If dt type is DISCRETIZATION_WRT_POINTS, points are store in place 
+   *                  !!NOTE!!: If dt type is DISCRETIZATION_WRT_POINTS, points are stored in place 
    *                  of intervals.
    * @param dt type of discretization: DISCRETIZATION_WRT_INTERVAL or
    *                                   DISCRETIZATION_WRT_THRESHOLD or

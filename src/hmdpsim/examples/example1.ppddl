@@ -1,0 +1,58 @@
+;; a 10x10 continuous square with reward and single discrete state.
+;;
+
+(define (domain example1)
+    (:requirements :equality
+		 :fluents
+		 :existential-preconditions
+		 :disjunctive-preconditions
+		 :conditional-effects
+		 :probabilistic-effects
+		 :rewards)
+
+    (:predicates
+     (Living))
+
+    (:functions (MoveXMean)
+		(MoveXStdDev)
+		(MoveYMean)
+		(MoveYStdDev)
+		(DiscInterval)
+		(DiscEpsilon))
+
+    (:resources (X 0 10)
+		(Y 0 10))
+
+    (:action Move
+	     :precondition (Living)
+	     :effect (probabilistic 1.0 (and (Living)
+					     (increase-probabilistic (X) normal
+								     (MoveXMean)
+								     (MoveXStdDev)
+								     interval
+								     (DiscInterval)
+								     (DiscEpsilon))
+					     (increase-probabilistic (Y) normal
+								     (MoveYMean)
+								     (MoveYStdDev)
+								     interval
+								     (DiscInterval)
+								     (DiscEpsilon)))))
+
+    ) ;; end domain
+
+(define (problem example1-pb)
+  (:domain example1)
+  (:init
+   (Living)
+   (X normal 0 1 interval 1 0.01)
+   (Y normal 0 1 interval 1 0.01)
+   (= DiscEpsilon 0.01)
+   (= DiscInterval 1)
+   (= MoveXMean 1)
+   (= MoveXStdDev 1)
+   (= MoveYMean 1)
+   (= MoveYStdDev 1))
+
+  (:goal Reward (Living) (:goal-reward (when (and (>= X 9) (>= Y 9)) 5)))
+)

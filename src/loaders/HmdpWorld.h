@@ -124,6 +124,9 @@ class HmdpWorld
   static std::map<double, HmdpState*> m_initialStates; /**< probability / initial state */
   static double *m_maxInitialResource;
   static double *m_minInitialResource;
+
+ public:
+  static bool m_oneTimeReward;
 };
 
 } /* end of namespace */

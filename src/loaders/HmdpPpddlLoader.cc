@@ -705,9 +705,6 @@ ContinuousTransition* HmdpPpddlLoader::convertContinuousActionEffect (const Effe
     delete[] discz_arg2[i];
   
   const discretizationType dt = HmdpPpddlLoader::m_defaultDiscretizationType;
-  /* const discretizationType dt = disczs[0][0]; */  /* TODO: this is a hack.. fix it */
-  //std::cout << "discz size: " << disczs.size () << std::endl;
-  //std::cout << "dt: " << dt << std::endl;
   for (size_t k=0;k<disczs.size();k++)
     delete[] disczs[k];
   

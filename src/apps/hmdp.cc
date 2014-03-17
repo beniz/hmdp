@@ -43,6 +43,11 @@ DEFINE_bool(show_discrete_states,false,"Whether to output the discrete state val
 DEFINE_string(point_based_output_step,"","Comma-separated list of stepsizes for point-based discretized output of value functions in dat and mat format (default is 1.0 in every dimension)");
 DEFINE_bool(print_world,false,"Prints full MDP world loaded from PPDDL (default is false)");
 DEFINE_bool(truncate_negative_ct_outcomes,false,"Truncates the negative part of continuous transition outcomes: this is useful when continuous spate-space models non-replenishable resources");
+DEFINE_string(algo,"dfs","Algorithm for value function approximation among dfs (default, depth-first search for finite-horizon and resource problems), vi (value iteration)");
+DEFINE_int32(T,-1,"Horizon for value iteration (-1 for infinite is default)");
+DEFINE_bool(one_time_reward,false,"Whether reward can only be reaped once (can be part of the model, here to simplify testing and modeling");
+DEFINE_double(gamma,1.0,"Discount factor");
+DEFINE_double(vi_epsilon,1e-3,"Precision on value iteration convergence");
 
 std::vector<std::string> &split(const std::string &s, char delim, std::vector<std::string> &elems) {
   std::stringstream ss(s);
@@ -65,6 +70,7 @@ int main (int argc, char *argv[])
   
   Alg::m_doubleEpsilon = FLAGS_prec;
   DiscreteDistribution::m_positiveResourcesConsumptionTruncation = FLAGS_truncate_negative_ct_outcomes;
+  HmdpWorld::m_oneTimeReward = FLAGS_one_time_reward;
   
   /*
    * Read pddl file and convert to hmdp structures.
@@ -84,9 +90,19 @@ int main (int argc, char *argv[])
   
   clock_t backup_start, backup_stop;
   backup_start = clock ();
-  if (FLAGS_with_convol)
-    HmdpEngine::DepthFirstSearchBackupCSD (HmdpWorld::getFirstInitialState ());
-  else HmdpEngine::DepthFirstSearchBackup (HmdpWorld::getFirstInitialState ());
+  if (FLAGS_algo == "dfs")
+    {
+      HmdpEngine::DepthFirstSearchBackupCSD (HmdpWorld::getFirstInitialState (),true,FLAGS_with_convol);
+    }
+  else if (FLAGS_algo == "vi")
+    {
+      HmdpEngine::ValueIteration(HmdpWorld::getFirstInitialState(),FLAGS_gamma,FLAGS_vi_epsilon,FLAGS_T);
+    }
+  else
+    {
+      std::cout << "Error: unknown algorithm " << FLAGS_algo << ". Exiting\n";
+      exit(1);
+    }
   backup_stop = clock ();
   double time = (double) (backup_stop - backup_start) / (double) (CLOCKS_PER_SEC);
   std::cout << "\nbackup ";
