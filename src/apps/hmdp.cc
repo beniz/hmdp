@@ -129,27 +129,28 @@ int main (int argc, char *argv[])
 	}
     }
 
-  std::map<HmdpState*, std::map<short, std::vector<HmdpState*> > >::const_iterator it;
-  for (it = HmdpEngine::m_nextStates.begin (); 
-       it != HmdpEngine::m_nextStates.end (); it++)
+  std::unordered_map<unsigned int,HmdpState*>::const_iterator it;
+  for (it = HmdpEngine::m_states.begin (); 
+       it != HmdpEngine::m_states.end (); it++)
     {
-      std::string numstr = std::to_string((*it).first->getStateIndex());
+      HmdpState *hst = (*it).second;
+      std::string numstr = std::to_string(hst->getStateIndex());
       std::string state_filename = FLAGS_output_prefix + FLAGS_ppddl_file + "_state_" + numstr;
 
-      if ((*it).first->getStateIndex() == 0 || !FLAGS_output_first_state_only)
+      if (hst->getStateIndex() == 0 || !FLAGS_output_first_state_only)
 	{
 	  if (FLAGS_vf_output_formats.find("box") != std::string::npos)
 	    {
 	      std::string state_filename_box = state_filename + ".box";
 	      ofstream output_state (state_filename_box.c_str (), ios::out);
 	      if (HmdpWorld::getNResources () == 1)
-		(*it).first->getVF ()->plot1DVF (output_state,
-						 HmdpWorld::getRscLowBounds (),
-						 HmdpWorld::getRscHighBounds ());
+		hst->getVF ()->plot1DVF (output_state,
+					 HmdpWorld::getRscLowBounds (),
+					 HmdpWorld::getRscHighBounds ());
 	      else if (HmdpWorld::getNResources () == 2)
-		(*it).first->getVF ()->plot2Dbox (0.0, output_state,
-						  HmdpWorld::getRscLowBounds (),
-						  HmdpWorld::getRscHighBounds ());
+		hst->getVF ()->plot2Dbox (0.0, output_state,
+					  HmdpWorld::getRscLowBounds (),
+					  HmdpWorld::getRscHighBounds ());
 	      std::cout << "written file " << state_filename_box << std::endl;
 	    }
 	  
@@ -159,9 +160,9 @@ int main (int argc, char *argv[])
 	      std::string state_filename_dat = state_filename + ".dat";
 	      BspTree::m_plotPointFormat = GnuplotF;
 	      ofstream output_state0_values_gp (state_filename_dat.c_str(), ios::out);
-	      HmdpWorld::getFirstInitialState ()->getVF ()->plotNDPointValues (output_state0_values_gp, &step[0],
-									       HmdpWorld::getRscLowBounds (),
-									       HmdpWorld::getRscHighBounds ());
+	      hst->getVF ()->plotNDPointValues (output_state0_values_gp, &step[0],
+						HmdpWorld::getRscLowBounds (),
+						HmdpWorld::getRscHighBounds ());
 	      std::cout << "written file " << state_filename_dat << std::endl;
 	    }
 	  
@@ -170,9 +171,9 @@ int main (int argc, char *argv[])
 	      std::string state_filename_mat = state_filename + ".mat";
 	      BspTree::m_plotPointFormat = MathematicaF;
 	      ofstream output_state0_values_mat (state_filename_mat.c_str(), ios::out);
-	      HmdpWorld::getFirstInitialState ()->getVF ()->plotNDPointValues (output_state0_values_mat, &step[0],
-									       HmdpWorld::getRscLowBounds (),
-									       HmdpWorld::getRscHighBounds ());
+	      hst->getVF ()->plotNDPointValues (output_state0_values_mat, &step[0],
+						HmdpWorld::getRscLowBounds (),
+						HmdpWorld::getRscHighBounds ());
 	      std::cout << "written file " << state_filename_mat << std::endl;
 	    }
 	  
@@ -181,11 +182,11 @@ int main (int argc, char *argv[])
 	      std::string state_filename_vrml = state_filename + ".vrml";
 	      ofstream output_state0_vrml (state_filename_vrml.c_str(), ios::out);
 	      double mval = 0.0; std::vector<int> gls;
-	      HmdpWorld::getFirstInitialState ()->getVF ()->maxValueAndGoals (gls, mval, HmdpWorld::getRscLowBounds (),
-									      HmdpWorld::getRscHighBounds ());
-	      HmdpWorld::getFirstInitialState ()->getVF ()->plot2DVrml2 (0.0, output_state0_vrml, 
-									 HmdpWorld::getRscLowBounds (),
-									 HmdpWorld::getRscHighBounds (), mval);
+	      hst->getVF ()->maxValueAndGoals (gls, mval, HmdpWorld::getRscLowBounds (),
+					       HmdpWorld::getRscHighBounds ());
+	      hst->getVF ()->plot2DVrml2 (0.0, output_state0_vrml, 
+					  HmdpWorld::getRscLowBounds (),
+					  HmdpWorld::getRscHighBounds (), mval);
 	      std::cout << "written file " << state_filename_vrml << std::endl;
 	    }
 	  
@@ -197,18 +198,18 @@ int main (int argc, char *argv[])
 		  std::string state_conv_fn = output_file_head + "_state_" + numstr + "_csd.box";
 		  ofstream output_csd (state_conv_fn.c_str (), ios::out);
 		  if (HmdpWorld::getNResources () == 1)
-		    (*it).first->getCSD ()->plot1DCSD (output_csd,
-						       HmdpWorld::getRscLowBounds (),
-						       HmdpWorld::getRscHighBounds ());
+		    hst->getCSD ()->plot1DCSD (output_csd,
+					       HmdpWorld::getRscLowBounds (),
+					       HmdpWorld::getRscHighBounds ());
 		  else if (HmdpWorld::getNResources () == 2)
-		    (*it).first->getCSD ()->plot2Dbox (0.0, output_csd,
-						       HmdpWorld::getRscLowBounds (),
-						       HmdpWorld::getRscHighBounds ());
+		    hst->getCSD ()->plot2Dbox (0.0, output_csd,
+					       HmdpWorld::getRscLowBounds (),
+					       HmdpWorld::getRscHighBounds ());
 		  std::cout << "written file " << state_conv_fn << std::endl;
 		}
 	      
 	      /* std::cout << "state csd:\n";
-		 (*it).first->getCSD ()->print (std::cout, HmdpWorld::getRscLowBounds (),
+		 hst->getCSD ()->print (std::cout, HmdpWorld::getRscLowBounds (),
 		 HmdpWorld::getRscHighBounds ()); */
 	      
 	      if (FLAGS_vf_output_formats.find("vrml") != std::string::npos)
@@ -217,9 +218,9 @@ int main (int argc, char *argv[])
 		  ofstream output_csd_vrml (state_conv_fn_vrml.c_str (), ios::out);
 		  if (HmdpWorld::getNResources () == 2)
 		    {
-		      (*it).first->getCSD ()->plot2DVrml2 (0.0, output_csd_vrml,
-							   HmdpWorld::getRscLowBounds (),
-							   HmdpWorld::getRscHighBounds (), 1.0);
+		      hst->getCSD ()->plot2DVrml2 (0.0, output_csd_vrml,
+						   HmdpWorld::getRscLowBounds (),
+						   HmdpWorld::getRscHighBounds (), 1.0);
 		      std::cout << "written file " << state_conv_fn_vrml << std::endl;
 		    }
 		}
@@ -229,9 +230,9 @@ int main (int argc, char *argv[])
 		  BspTree::m_plotPointFormat = MathematicaF;
 		  std::string state_conv_fn_mat = output_file_head + "_state_" + numstr + "_csd.mat";
 		  ofstream output_state_values_mat (state_conv_fn_mat.c_str (), ios::out);
-		  (*it).first->getCSD ()->plotNDPointValues (output_state_values_mat, &step[0],
-							     HmdpWorld::getRscLowBounds (),
-							     HmdpWorld::getRscHighBounds ());
+		  hst->getCSD ()->plotNDPointValues (output_state_values_mat, &step[0],
+						     HmdpWorld::getRscLowBounds (),
+						     HmdpWorld::getRscHighBounds ());
 		  std::cout << "written file " << state_conv_fn_mat << std::endl;
 		}
 	      
@@ -240,15 +241,15 @@ int main (int argc, char *argv[])
 		  BspTree::m_plotPointFormat = GnuplotF;
 		  std::string state_conv_fn_gp = output_file_head + "_state_" + numstr + "_csd.dat";
 		  ofstream output_state_values_dat (state_conv_fn_gp.c_str (), ios::out);
-		  (*it).first->getCSD ()->plotNDPointValues (output_state_values_dat, &step[0],
-							     HmdpWorld::getRscLowBounds (),
-							     HmdpWorld::getRscHighBounds ());
+		  hst->getCSD ()->plotNDPointValues (output_state_values_dat, &step[0],
+						     HmdpWorld::getRscLowBounds (),
+						     HmdpWorld::getRscHighBounds ());
 		  std::cout << "written file " << state_conv_fn_gp << std::endl;
 		}
 	    }
 	}
 
       if (FLAGS_show_discrete_states)
-	(*it).first->print (std::cout);
+	hst->print (std::cout);
     }
 }

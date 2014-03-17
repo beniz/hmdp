@@ -75,15 +75,19 @@ class HmdpEngine
    * @param hst state.
    */
   /* TODO: for dfs, should not check the resources... */
-  static HmdpState* hasBeenVisited (const HmdpState &hst);
+  static HmdpState* hasBeenVisited (const HmdpState *hst);
 
   /* states dag setter/accessor */
   static void addNextState (HmdpState *hst, const short &action, HmdpState *nextState);
   static HmdpState* getNextState (HmdpState *hst, const short &action, const size_t &pos);
 
  public:
-  static std::map<HmdpState*, std::map<short, std::vector<HmdpState*> > > m_nextStates;  /**< map of successor states, for each state,
-									  filled up during the dfs search. */
+  //static std::unordered_map<HmdpState*, std::unordered_map<int, std::vector<HmdpState*> > > m_nextStates;
+  /**< map of successor states, for each state, filled up during the dfs search. */
+  static std::unordered_map<unsigned int,std::unordered_map<int,std::vector<HmdpState*> > > m_nextStates;
+  static std::unordered_map<unsigned int,HmdpState*> m_states;
+  
+  
   static int m_nbackups;
   static int m_vf_nbackups;
   static int m_mean_backup_time;

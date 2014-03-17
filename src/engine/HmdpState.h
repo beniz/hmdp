@@ -140,6 +140,10 @@ class HmdpState
   /* printing */
   void print (std::ostream &out);
 
+  /* hashing. */
+  std::string to_str() const;
+  unsigned int to_uint() const;
+  
  public:
   static int m_statesCount;  /**< hybrid states counter */
 

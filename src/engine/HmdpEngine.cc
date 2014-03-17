@@ -22,7 +22,8 @@
 
 namespace hmdp_engine
 {
-std::map<HmdpState*, std::map<short, std::vector<HmdpState*> > > HmdpEngine::m_nextStates;
+std::unordered_map<unsigned int,std::unordered_map<int,std::vector<HmdpState*> > > HmdpEngine::m_nextStates;
+std::unordered_map<unsigned int,HmdpState*> HmdpEngine::m_states;
 int HmdpEngine::m_nbackups = -1;
 int HmdpEngine::m_vf_nbackups = 0;
 int HmdpEngine::m_mean_backup_time = 0;
@@ -45,8 +46,10 @@ void HmdpEngine::DepthFirstSearchBackupCSD (HmdpState *hst,
       m_nbackups = 0;
     }
   
-  HmdpEngine::m_nextStates.insert (std::pair<HmdpState*, std::map<short, std::vector<HmdpState*> > > (hst, std::map<short, std::vector<HmdpState*> > ()));
-
+  unsigned int hst_uint = hst->to_uint();
+  HmdpEngine::m_states.insert(std::pair<unsigned int,HmdpState*>(hst_uint,hst));
+  HmdpEngine::m_nextStates.insert(std::pair<unsigned int,std::unordered_map<int,std::vector<HmdpState*> > >(hst_uint,std::unordered_map<int,std::vector<HmdpState*> >()));
+  
   /* iterate all actions in the world */
   std::map<size_t, HybridTransition*>::const_iterator ai;
   for (ai = HmdpWorld::actionsBegin (); ai != HmdpWorld::actionsEnd (); ai++)
@@ -66,7 +69,7 @@ void HmdpEngine::DepthFirstSearchBackupCSD (HmdpState *hst,
 
 	      /* test if state has been already visited. */
 	      HmdpState *existingState = NULL;
-	      if ((existingState = HmdpEngine::hasBeenVisited (*nextState)) != NULL)
+	      if ((existingState = HmdpEngine::hasBeenVisited (nextState)) != NULL)
 		{
 		  HmdpEngine::addNextState (hst, ht->getActionIndex (), existingState);
 		  delete nextState;
@@ -131,15 +134,16 @@ void HmdpEngine::DepthFirstSearchBackupCSD (HmdpState *hst,
       int elapsed_bu_ms = std::chrono::duration_cast<std::chrono::milliseconds>(bu_end-bu_start).count();
       m_nbackups++;
       m_mean_backup_time += elapsed_bu_ms / 1000.0;
-  
+      m_leaves += HmdpWorld::getFirstInitialState()->getVF()->countLeaves();
+      
       // log total time, total number of backup states, total number of vf backups, last state backup time, mean state backup time
-      std::cout << std::setprecision(5) << elapsed_ms/1000.0 << std::setw(owidth) << fixed << m_nbackups << std::setw(owidth) << fixed << m_vf_nbackups
-		<< std::setw(owidth) << fixed << elapsed_bu_ms / 1000.0 << std::setw(owidth) << fixed << m_mean_backup_time / static_cast<double>(m_nbackups) << std::endl;
+      std::cout << "\r" << std::setprecision(5) << elapsed_ms/1000.0 << std::setw(owidth) << fixed << m_nbackups << std::setw(owidth) << fixed << m_vf_nbackups
+		<< std::setw(owidth) << fixed << elapsed_bu_ms / 1000.0 << std::setw(owidth) << fixed << m_mean_backup_time / static_cast<double>(m_nbackups) << std::setw(10) << m_leaves;
     }
       
   //debug
-  /* std::cout << "[Debug]:backup done for state:\n";
-     hst->print (std::cout); */
+  /*std::cout << "[Debug]:backup done for state:\n";
+    hst->print (std::cout);*/
   //debug
 }
 
@@ -149,10 +153,10 @@ void HmdpEngine::ValueIteration(HmdpState *initState,
 				const int &T)
 {
   int i = 0;
-  //HmdpState *hst = initState;
-  /*HmdpEngine::m_nextStates.insert (std::pair<HmdpState*, std::map<short, std::vector<HmdpState*> > > (hst, std::map<short, std::vector<HmdpState*> > ()));
-    HmdpEngine::addNextState(hst,1,hst);*/
 
+  // fillup the set of all states with dfs.
+  // TODO: use horizon T and an upper threshold on the number of visited states
+  //       in order to cope with infinite-horizon models.
   HmdpEngine::DepthFirstSearchBackupCSD(initState,false,false);
   
   double residual = std::numeric_limits<double>::min();
@@ -169,11 +173,13 @@ void HmdpEngine::ValueIteration(HmdpState *initState,
 					output_state0_values_gp.close();*/
       //debug
 
-      std::map<HmdpState*,std::map<short,std::vector<HmdpState*> > >::iterator mit
+      /*std::unordered_map<HmdpState*,std::unordered_map<int,std::vector<HmdpState*> > >::iterator mit
 	= HmdpEngine::m_nextStates.begin();
-      while(mit!=HmdpEngine::m_nextStates.end())
+	while(mit!=HmdpEngine::m_nextStates.end())*/
+      std::unordered_map<unsigned int,HmdpState*>::iterator mit = HmdpEngine::m_states.begin();
+      while(mit!=HmdpEngine::m_states.end())
 	{
-	  HmdpState *hst = (*mit).first;
+	  HmdpState *hst = (*mit).second;
 	  residual = std::numeric_limits<double>::min();
 	  HmdpEngine::BspBackup(hst,residual,true,gamma);
 	  ++mit;
@@ -314,14 +320,20 @@ void HmdpEngine::BspBackup (HmdpState *hst,
   hst->setVF (maxActionVF);
 }
 
-HmdpState* HmdpEngine::hasBeenVisited (const HmdpState &hst)
+HmdpState* HmdpEngine::hasBeenVisited (const HmdpState *hst)
 {
-  std::map<HmdpState*, std::map<short, std::vector<HmdpState*> > >::const_iterator nsi;
-  for (nsi = HmdpEngine::m_nextStates.begin (); 
+  std::unordered_map<unsigned int,HmdpState*>::const_iterator nsi;
+  
+    //std::unordered_map<unsigned int, std::unordered_map<short, std::vector<HmdpState*> > >::const_iterator nsi;
+  /*for (nsi = HmdpEngine::m_nextStates.begin (); 
        nsi != HmdpEngine::m_nextStates.end (); nsi++)
     {
       if ((*nsi).first->isEqual (hst))
 	return (*nsi).first;
+	}*/
+  if ((nsi = HmdpEngine::m_states.find(hst->to_uint()))!=HmdpEngine::m_states.end())
+    {
+      return (*nsi).second;
     }
   return NULL;
 }
@@ -401,12 +413,12 @@ ContinuousReward* HmdpEngine::computeRewardFromGoals (HmdpState *hst, HybridTran
 
 void HmdpEngine::addNextState (HmdpState *hst, const short &action, HmdpState *nextState)
 {
-  HmdpEngine::m_nextStates[hst][action].push_back (nextState);
+  HmdpEngine::m_nextStates[hst->to_uint()][action].push_back(nextState);
 }
 
 HmdpState* HmdpEngine::getNextState (HmdpState *hst, const short &action, const size_t &pos)
 {
-  return HmdpEngine::m_nextStates[hst][action][pos];
+  return HmdpEngine::m_nextStates[hst->to_uint()][action][pos];
 }
 
 } /* end of namespace */
