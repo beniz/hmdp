@@ -1,4 +1,10 @@
-;; a 10x10 continuous square with reward and single discrete state.
+;; a dummy 10x10 continuous square with reward and a single discrete state.
+;; a robot moves around with continuous uncertainty on each move, and
+;; gets recurrent reward for staying within the x > 9 and y > 9 area.
+;; note that the robot is forced to move with mean 1, and cannot remain idle
+;; in order to reap infinite reward easily.
+;;
+;; Emmanuel Benazera beniz@droidnik.fr, 2014.
 ;;
 
 (define (domain example1)
