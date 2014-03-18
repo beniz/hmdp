@@ -94,12 +94,17 @@ int main (int argc, char *argv[])
   if (FLAGS_algo == "dfs")
     {
       HmdpEngine::DepthFirstSearchBackupCSD (HmdpWorld::getFirstInitialState (),true,FLAGS_with_convol,
-					     FLAGS_max_dfs_recur);
+					     false,FLAGS_max_dfs_recur);
     }
   else if (FLAGS_algo == "vi")
     {
       HmdpEngine::ValueIteration(HmdpWorld::getFirstInitialState(),FLAGS_gamma,FLAGS_vi_epsilon,FLAGS_T,
 				 FLAGS_max_dfs_recur);
+    }
+  else if (FLAGS_algo == "psvi")
+    {
+      HmdpEngine::prioritizedValueIteration(HmdpWorld::getFirstInitialState(),FLAGS_gamma,FLAGS_vi_epsilon,
+					    FLAGS_T,FLAGS_max_dfs_recur);
     }
   else
     {

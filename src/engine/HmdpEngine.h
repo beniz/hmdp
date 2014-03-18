@@ -43,6 +43,7 @@ class HmdpEngine
   static void DepthFirstSearchBackupCSD (HmdpState *initState,
 					 const bool &backups=true,
 					 const bool &csd=false,
+					 const bool &pstates=false,
 					 const int &max_dfs_recur=-1);
 
   static void ValueIteration(HmdpState *initState,
@@ -50,9 +51,14 @@ class HmdpEngine
 			     const double &epsilon,
 			     const int &T,
 			     const int &max_dfs_recur=-1);
+
+  static void prioritizedValueIteration(HmdpState *initState,
+					const double &gamma,
+					const double &epsilon,
+					const int &T,
+					const int &max_dfs_recur=-1);
   
   static void BspBackup (HmdpState *hst,
-			 double &residual,
 			 const bool &with_residual=false,
 			 const double &gamma=1.0);
 
@@ -82,9 +88,12 @@ class HmdpEngine
   /* states dag setter/accessor */
   static void addNextState (HmdpState *hst, const short &action, HmdpState *nextState);
   static HmdpState* getNextState (HmdpState *hst, const short &action, const size_t &pos);
-
+  static void addParentState(HmdpState *hst, const short &action, const double &outcome, HmdpState *nextState);
+  static std::unordered_map<int,std::multimap<double,HmdpState*> > getParentStates(HmdpState *hst);
+  
  public:
   static std::unordered_map<unsigned int,std::unordered_map<int,std::vector<HmdpState*> > > m_nextStates; /**< map of successor states, for each state, filled up during the dfs search. */
+  static std::unordered_map<unsigned int,std::unordered_map<int,std::multimap<double,HmdpState*> > > m_parentStates; /**< map of parent states, for each state. */
   static std::unordered_map<unsigned int,HmdpState*> m_states;
   
   

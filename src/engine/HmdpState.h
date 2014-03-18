@@ -43,7 +43,7 @@ using ppddl_parser::AtomSet;
 
 namespace hmdp_engine
 {
-
+  
 /**
  * \class HmdpState
  * \brief Hybrid state for the hmdp engine (backups).
@@ -135,8 +135,12 @@ class HmdpState
   void setVF (ValueFunction *vf);
   void setCSD (ContinuousStateDistribution *csd);
   void setCSDToNull ();
+  void setResidual(const double &residual) { m_residual = residual; };
+  double getResidual() const { return m_residual; };
+  void setPriority(const double &priority) { m_priority = priority; };
+  double getPriority() const { return m_priority; };
   static void decrementStatesCounter () { HmdpState::m_statesCount--; }
-
+  
   /* printing */
   void print (std::ostream &out);
 
@@ -145,7 +149,7 @@ class HmdpState
   unsigned int to_uint() const;
   
  public:
-  static int m_statesCount;  /**< hybrid states counter */
+  static int m_statesCount;  /**< hybrid states counter. */
 
   int m_stateIndex; /**< index */
 #ifdef HAVE_PPDDL
@@ -155,8 +159,26 @@ class HmdpState
   ValueFunction *m_stateVF;  /**< value function attached to this state */
   ContinuousStateDistribution *m_stateCSD;  /**< state discretized probability distribution
 					       over resources. */
+  double m_residual; /**< VF residual, when applicable (e.g. VI). */
+  double m_priority; /**< State priority in prioritized backups (e.g. prioritized VI). */
 };
 
+  struct CompareStateResiduals
+  {
+    bool operator()(const HmdpState *s1, const HmdpState *s2)
+    {
+      return s1->m_residual > s2->m_residual;
+    }
+  };
+
+  struct CompareStatePriorities
+  {
+    bool operator()(const HmdpState *s1, const HmdpState *s2)
+    {
+      return s1->m_priority > s2->m_priority;
+    }
+  };
+ 
 } /* end of namespace */
 
 #endif

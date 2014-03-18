@@ -79,7 +79,7 @@ namespace hmdp_engine
 int HmdpState::m_statesCount = 0;
 
 HmdpState::HmdpState ()
-  : m_stateIndex (HmdpState::m_statesCount), m_stateCSD (NULL)
+  : m_stateIndex (HmdpState::m_statesCount), m_stateCSD (NULL), m_residual(0.0), m_priority(0.0)
 {
   HmdpState::m_statesCount++;
   m_stateVF = new PiecewiseConstantValueFunction (static_cast<int> (HmdpWorld::getNResources ()),
@@ -87,7 +87,7 @@ HmdpState::HmdpState ()
 }
 
 HmdpState::HmdpState (ContinuousStateDistribution *csd)
-  : m_stateIndex (HmdpState::m_statesCount), m_stateCSD (csd)
+  : m_stateIndex (HmdpState::m_statesCount), m_stateCSD (csd), m_residual(0.0), m_priority(0.0)
 {
   HmdpState::m_statesCount++;
   m_stateVF = new PiecewiseConstantValueFunction (static_cast<int> (HmdpWorld::getNResources ()),
@@ -95,7 +95,7 @@ HmdpState::HmdpState (ContinuousStateDistribution *csd)
 }
 
 HmdpState::HmdpState (const HmdpState &hst)
-  : m_stateIndex (HmdpState::m_statesCount)
+  : m_stateIndex (HmdpState::m_statesCount), m_residual(hst.getResidual()), m_priority(hst.getPriority())
 {
   HmdpState::m_statesCount++;
   

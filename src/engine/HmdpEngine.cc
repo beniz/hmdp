@@ -19,10 +19,13 @@
 #include "ValueFunctionOperations.h"
 #include <iomanip>
 #include <limits>
+#include <queue>
 
 namespace hmdp_engine
 {
+  
 std::unordered_map<unsigned int,std::unordered_map<int,std::vector<HmdpState*> > > HmdpEngine::m_nextStates;
+std::unordered_map<unsigned int,std::unordered_map<int,std::multimap<double,HmdpState*> > > HmdpEngine::m_parentStates;
 std::unordered_map<unsigned int,HmdpState*> HmdpEngine::m_states;
 int HmdpEngine::m_nbackups = -1;
 int HmdpEngine::m_vf_nbackups = 0;
@@ -36,11 +39,11 @@ int owidth = 15;
 void HmdpEngine::DepthFirstSearchBackupCSD (HmdpState *hst,
 					    const bool &backups,
 					    const bool &csd,
+					    const bool &pstates,
 					    const int &max_dfs_recur)
 {
   static int s_calls = 0;
   
-  double residual = 0.0; // unused in dfs.
   if (m_nbackups == -1)
     {
       std::cout << "Total time" << std::setw(owidth) << fixed << "#discs" << std::setw(owidth) << fixed << "#vf_backups"
@@ -77,6 +80,8 @@ void HmdpEngine::DepthFirstSearchBackupCSD (HmdpState *hst,
 	      if ((existingState = HmdpEngine::hasBeenVisited (nextState)) != NULL)
 		{
 		  HmdpEngine::addNextState (hst, ht->getActionIndex (), existingState);
+		  if (pstates)
+		    HmdpEngine::addParentState(hst,ht->getActionIndex(),ht->getOutcome(i)->getOutcomeProbability(),existingState);
 		  delete nextState;
 		  HmdpState::decrementStatesCounter ();
 
@@ -121,9 +126,11 @@ void HmdpEngine::DepthFirstSearchBackupCSD (HmdpState *hst,
 
 	      /* add state to successors */
 	      HmdpEngine::addNextState (hst, ht->getActionIndex (), nextState);
-
+	      if (pstates)
+		HmdpEngine::addParentState(hst,ht->getActionIndex(),ht->getOutcome(i)->getOutcomeProbability(),nextState);
+	      
 	      /* dfs recursive backup */
-	      HmdpEngine::DepthFirstSearchBackupCSD (nextState,backups,csd,max_dfs_recur);
+	      HmdpEngine::DepthFirstSearchBackupCSD (nextState,backups,csd,pstates,max_dfs_recur);
 	    }
 	}  /* end if enabled */
     }  /* end for actions */
@@ -133,7 +140,7 @@ void HmdpEngine::DepthFirstSearchBackupCSD (HmdpState *hst,
     {
       std::chrono::time_point<std::chrono::system_clock> bu_start, bu_end;
       bu_start = std::chrono::system_clock::now();
-      HmdpEngine::BspBackup (hst,residual);
+      HmdpEngine::BspBackup (hst);
       bu_end = m_tend = std::chrono::system_clock::now();
       int elapsed_ms = std::chrono::duration_cast<std::chrono::milliseconds>(m_tend-m_tstart).count();
       int elapsed_bu_ms = std::chrono::duration_cast<std::chrono::milliseconds>(bu_end-bu_start).count();
@@ -161,7 +168,7 @@ void HmdpEngine::ValueIteration(HmdpState *initState,
   int i = 0;
 
   // fillup the set of all states with dfs.
-  HmdpEngine::DepthFirstSearchBackupCSD(initState,false,false,max_dfs_recur);
+  HmdpEngine::DepthFirstSearchBackupCSD(initState,false,false,false,max_dfs_recur);
   
   double residual = std::numeric_limits<double>::min();
   while(i == 0 || residual > epsilon)
@@ -177,15 +184,13 @@ void HmdpEngine::ValueIteration(HmdpState *initState,
 					output_state0_values_gp.close();*/
       //debug
 
-      /*std::unordered_map<HmdpState*,std::unordered_map<int,std::vector<HmdpState*> > >::iterator mit
-	= HmdpEngine::m_nextStates.begin();
-	while(mit!=HmdpEngine::m_nextStates.end())*/
+      residual = std::numeric_limits<double>::min();
       std::unordered_map<unsigned int,HmdpState*>::iterator mit = HmdpEngine::m_states.begin();
       while(mit!=HmdpEngine::m_states.end())
 	{
 	  HmdpState *hst = (*mit).second;
-	  residual = std::numeric_limits<double>::min();
-	  HmdpEngine::BspBackup(hst,residual,true,gamma);
+	  HmdpEngine::BspBackup(hst,true,gamma);
+	  residual = std::max(residual,hst->getResidual());
 	  ++mit;
 	}
       double expectation = initState->getVF()->computeExpectation(initState->getCSD(),
@@ -198,8 +203,67 @@ void HmdpEngine::ValueIteration(HmdpState *initState,
     }
 }
 
+void HmdpEngine::prioritizedValueIteration(HmdpState *initState,
+					   const double &gamma,
+					   const double &epsilon,
+					   const int &T,
+					   const int &max_dfs_recur)
+{
+  int i = 0;
+  
+  // fillup the set of all states with dfs.
+  HmdpEngine::DepthFirstSearchBackupCSD(initState,false,false,true,max_dfs_recur);
+
+  std::priority_queue<HmdpState*,std::vector<HmdpState*>,CompareStatePriorities> pqueue;
+  // initial filling of the queue.
+  for (auto hit=HmdpEngine::m_states.begin();hit!=HmdpEngine::m_states.end();++hit)
+    {
+      (*hit).second->setPriority(epsilon);
+      pqueue.push((*hit).second);
+    }
+  
+  while(!pqueue.empty())
+    {
+      // pick up the top state(s) from the priority queue.
+      HmdpState *hst = pqueue.top();
+      pqueue.pop();
+      
+      // back it up.
+      HmdpEngine::BspBackup(hst,true,gamma);
+      
+      // update priorities of all its predecessors. (requires additional structure).
+      std::unordered_map<int,std::multimap<double,HmdpState*> > pred_states = HmdpEngine::getParentStates(hst);
+      auto hit = pred_states.begin();
+      while(hit!=pred_states.end())
+	{
+	  std::multimap<double,HmdpState*>::iterator pit = (*hit).second.begin();
+	  while(pit!=(*hit).second.end())
+	    {
+	      HmdpState *pred_hst = (*pit).second;
+	      //std::cerr << "residual: " << hst->getResidual() << " -- prob " << (*pit).first << " -- tentative new priority: " << (*pit).first*hst->getResidual() << std::endl;
+	      if (hst != pred_hst)
+		pred_hst->setPriority(std::max(pred_hst->getPriority(),(*pit).first*hst->getResidual()));
+	      else pred_hst->setPriority((*pit).first*hst->getResidual()); // TODO: this does not max over all outcomes from itself.
+	      if (pred_hst->getPriority() > epsilon)
+		pqueue.push(pred_hst);
+	      ++pit;
+	    }
+	  ++hit;
+	}
+      
+      // update priority queue (inefficient, requires a Fibonacci heap instead).
+      std::make_heap(const_cast<HmdpState**>(&pqueue.top()),const_cast<HmdpState**>(&pqueue.top())+pqueue.size(),CompareStatePriorities());
+      double expectation = initState->getVF()->computeExpectation(initState->getCSD(),
+								  HmdpWorld::getRscLowBounds (),
+								  HmdpWorld::getRscHighBounds ());
+      std::cerr << "iteration #" << i << " -- state: " << hst->getStateIndex() << " -- priority: " << hst->getPriority() << " -- expected: " << expectation << std::endl;
+      ++i;
+      if (T > 0 && i >= T)
+	break;
+    }
+}
+ 
 void HmdpEngine::BspBackup (HmdpState *hst,
-			    double &residual,
 			    const bool &with_residual,
 			    const double &gamma)
 { 
@@ -230,7 +294,7 @@ void HmdpEngine::BspBackup (HmdpState *hst,
 	  
 	  HybridTransition *ht = (*ai).second;
 	  ValueFunction **discStatesVF = new ValueFunction*[ht->getNOutcomes ()];
-	  for (int i=0; i<ht->getNOutcomes (); i++)  /* fill up array */
+	  for (int i=0; i<ht->getNOutcomes (); i++)
 	    {
 	      HmdpState *nextState =  HmdpEngine::getNextState (hst, ht->getActionIndex (), i);
 	      if (gamma == 1.0)
@@ -313,12 +377,14 @@ void HmdpEngine::BspBackup (HmdpState *hst,
       /*std::cout << "[Debug]::HmdpEngine::BspBackup: rVF:\n";
       rVF->print (std::cout, HmdpWorld::getRscLowBounds (),
       HmdpWorld::getRscHighBounds ());*/
-      
+
+      double residual = 0.0;
       rVF->maxAbsValue(residual,
 		       HmdpWorld::getRscLowBounds (),
 		       HmdpWorld::getRscHighBounds ());
       //std::cout << "residual: " << residual << std::endl;
       BspTree::deleteBspTree(rVF);
+      hst->setResidual(residual);
     }
   
   hst->setVF (maxActionVF);
@@ -420,9 +486,29 @@ void HmdpEngine::addNextState (HmdpState *hst, const short &action, HmdpState *n
   HmdpEngine::m_nextStates[hst->to_uint()][action].push_back(nextState);
 }
 
+void HmdpEngine::addParentState(HmdpState *hst, const short &action, const double &outcome, HmdpState *nextState)
+{
+  unsigned int hst_uint = nextState->to_uint();
+  std::unordered_map<unsigned int,std::unordered_map<int,std::multimap<double,HmdpState*> > >::iterator hit;
+  if ((hit=HmdpEngine::m_parentStates.find(hst_uint))==HmdpEngine::m_parentStates.end())
+    {
+      HmdpEngine::m_parentStates.insert(std::pair<unsigned int,std::unordered_map<int,std::multimap<double,HmdpState*> > >(hst_uint,std::unordered_map<int,std::multimap<double,HmdpState*> >()));
+      HmdpEngine::m_parentStates[hst_uint][action].insert(std::pair<double,HmdpState*>(outcome,hst));
+    }
+  else (*hit).second[action].insert(std::pair<double,HmdpState*>(outcome,hst));
+}
+  
 HmdpState* HmdpEngine::getNextState (HmdpState *hst, const short &action, const size_t &pos)
 {
   return HmdpEngine::m_nextStates[hst->to_uint()][action][pos];
 }
 
+std::unordered_map<int,std::multimap<double,HmdpState*> > HmdpEngine::getParentStates(HmdpState *hst)
+{
+  std::unordered_map<unsigned int,std::unordered_map<int,std::multimap<double,HmdpState*> > >::iterator hit;
+  if ((hit=HmdpEngine::m_parentStates.find(hst->to_uint()))!=HmdpEngine::m_parentStates.end())
+    return (*hit).second;
+  return std::unordered_map<int,std::multimap<double,HmdpState*> >();
+}
+  
 } /* end of namespace */
