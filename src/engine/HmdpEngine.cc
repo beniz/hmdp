@@ -34,10 +34,12 @@ std::chrono::time_point<std::chrono::system_clock> HmdpEngine::m_tend = std::chr
 int owidth = 15;
   
 void HmdpEngine::DepthFirstSearchBackupCSD (HmdpState *hst,
-					      const bool &backups,
-					      const bool &csd)
+					    const bool &backups,
+					    const bool &csd,
+					    const int &max_dfs_recur)
 {
-
+  static int s_calls = 0;
+  
   double residual = 0.0; // unused in dfs.
   if (m_nbackups == -1)
     {
@@ -45,6 +47,9 @@ void HmdpEngine::DepthFirstSearchBackupCSD (HmdpState *hst,
 		<< std::setw(owidth) << fixed << "lbtime" << std::setw(owidth) << fixed << "mbtime" << std::setw(owidth) << fixed << "ntiles\n";;
       m_nbackups = 0;
     }
+  s_calls++;
+  if (max_dfs_recur != -1 && s_calls >= max_dfs_recur) // if there's an upper limit to the number of recursive call, leave.
+    return;
   
   unsigned int hst_uint = hst->to_uint();
   HmdpEngine::m_states.insert(std::pair<unsigned int,HmdpState*>(hst_uint,hst));
@@ -118,7 +123,7 @@ void HmdpEngine::DepthFirstSearchBackupCSD (HmdpState *hst,
 	      HmdpEngine::addNextState (hst, ht->getActionIndex (), nextState);
 
 	      /* dfs recursive backup */
-	      HmdpEngine::DepthFirstSearchBackupCSD (nextState,backups,csd);
+	      HmdpEngine::DepthFirstSearchBackupCSD (nextState,backups,csd,max_dfs_recur);
 	    }
 	}  /* end if enabled */
     }  /* end for actions */
@@ -150,14 +155,13 @@ void HmdpEngine::DepthFirstSearchBackupCSD (HmdpState *hst,
 void HmdpEngine::ValueIteration(HmdpState *initState,
 				const double &gamma,
 				const double &epsilon,
-				const int &T)
+				const int &T,
+				const int &max_dfs_recur)
 {
   int i = 0;
 
   // fillup the set of all states with dfs.
-  // TODO: use horizon T and an upper threshold on the number of visited states
-  //       in order to cope with infinite-horizon models.
-  HmdpEngine::DepthFirstSearchBackupCSD(initState,false,false);
+  HmdpEngine::DepthFirstSearchBackupCSD(initState,false,false,max_dfs_recur);
   
   double residual = std::numeric_limits<double>::min();
   while(i == 0 || residual > epsilon)

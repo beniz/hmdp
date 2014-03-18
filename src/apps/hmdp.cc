@@ -48,6 +48,7 @@ DEFINE_int32(T,-1,"Horizon for value iteration (-1 for infinite is default)");
 DEFINE_bool(one_time_reward,false,"Whether reward can only be reaped once (can be part of the model, here to simplify testing and modeling");
 DEFINE_double(gamma,1.0,"Discount factor");
 DEFINE_double(vi_epsilon,1e-3,"Precision on value iteration convergence");
+DEFINE_int32(max_dfs_recur,-1,"Maximum number of depth first search recursive calls in the discrete state-space (useful when discovering states of an infinite-horizon problem before applying value iteration");
 
 std::vector<std::string> &split(const std::string &s, char delim, std::vector<std::string> &elems) {
   std::stringstream ss(s);
@@ -92,11 +93,13 @@ int main (int argc, char *argv[])
   backup_start = clock ();
   if (FLAGS_algo == "dfs")
     {
-      HmdpEngine::DepthFirstSearchBackupCSD (HmdpWorld::getFirstInitialState (),true,FLAGS_with_convol);
+      HmdpEngine::DepthFirstSearchBackupCSD (HmdpWorld::getFirstInitialState (),true,FLAGS_with_convol,
+					     FLAGS_max_dfs_recur);
     }
   else if (FLAGS_algo == "vi")
     {
-      HmdpEngine::ValueIteration(HmdpWorld::getFirstInitialState(),FLAGS_gamma,FLAGS_vi_epsilon,FLAGS_T);
+      HmdpEngine::ValueIteration(HmdpWorld::getFirstInitialState(),FLAGS_gamma,FLAGS_vi_epsilon,FLAGS_T,
+				 FLAGS_max_dfs_recur);
     }
   else
     {
