@@ -45,10 +45,10 @@ public:
   Rational(int n, int m);
 
   /* Constructs a rational number. */
-  Rational(const char* s);
+  //Rational(const char* s);
 
   /* Constructs a rational number. */
-  Rational (const double &x);
+  Rational(const double &x);
   
   static Rational toRational (const double &x, int iterations);
 

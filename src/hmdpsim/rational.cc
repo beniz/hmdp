@@ -118,12 +118,15 @@ Rational Rational::toRational (const double &x, const double &limit, int iterati
 }
 
 /* Constructs a rational number. */
-Rational::Rational(const char* s)
+/*Rational::Rational(const char* s)
   : numerator_(0) {
+  std::cout << "rational from char: " << s << std::endl;
+  
   const char* si = s;
   for (; *si != '\0' && *si != '.' && *si != '/'; si++) {
     numerator_ = 10*numerator_ + (*si - '0');
   }
+  std::cout << "numerator: " << numerator_ << std::endl;
   if (*si == '/') {
     denominator_ = 0;
     for (si++; *si != '\0'; si++) {
@@ -150,7 +153,7 @@ Rational::Rational(const char* s)
   } else {
     denominator_ = 1;
   }
-}
+  }*/
 
 
 /* Less-than comparison operator for rational numbers. */

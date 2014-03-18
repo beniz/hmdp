@@ -97,8 +97,8 @@
 	      (DisczIntervalTime)
 	      )
 
-  (:resources (Time 0 4500)
-	      (Energy 0 20))
+  (:cspace (Time 0 4500)
+	   (Energy 0 20))
 
   (:action Orientation
 	   :precondition (and (Start)

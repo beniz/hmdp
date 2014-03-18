@@ -150,7 +150,7 @@ private:
   ValueMap init_values_;
   /* Initial effects. */
   EffectList init_effects_;
-  /* Initial distributions over resources. */
+  /* Initial distributions over continuous variables. */
   ProbabilityDistMap init_prob_dists_;
 
   GoalMap goals_;  /**< set of goals in this problem */

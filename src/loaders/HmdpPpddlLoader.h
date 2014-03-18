@@ -41,9 +41,9 @@ class HmdpPpddlLoader
    */
   static bool load_file (const char *filename);
 
-  static std::vector<std::pair<std::string, std::pair<double, double> > >* getResources ();
+  static std::vector<std::pair<std::string, std::pair<double, double> > >* getCVariables ();
 
-  static std::vector<std::pair<std::string, std::pair<double, double> > >* getResources (const int &dm);
+  static std::vector<std::pair<std::string, std::pair<double, double> > >* getCVariables (const int &dm);
 
   static HybridTransition* convertAction (const Action &act, const size_t &nrsc);
 
@@ -102,13 +102,13 @@ class HmdpPpddlLoader
   
   static const std::string& getGoalName(const int &id, const int &pb);
 
-   static std::pair<std::string, std::pair<double, double> >& getResource (const std::string &rsc);
+   static std::pair<std::string, std::pair<double, double> >& getCVariable (const std::string &rsc);
 
-   static std::pair<std::string, std::pair<double, double> >& getResource (const std::string &rsc, const int &dm);
+   static std::pair<std::string, std::pair<double, double> >& getCVariable (const std::string &rsc, const int &dm);
 
-   static std::pair<std::string, std::pair<double, double> >& getResource (const int &pos);
+   static std::pair<std::string, std::pair<double, double> >& getCVariable (const int &pos);
 
-   static std::pair<std::string, std::pair<double, double> >& getResource (const int &pos, const int &dm);
+   static std::pair<std::string, std::pair<double, double> >& getCVariable (const int &pos, const int &dm);
 
   /* printing */
   static void print (std::ostream &out, const ValueMap &values, const AtomSet &atoms);

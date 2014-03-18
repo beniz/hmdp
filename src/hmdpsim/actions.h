@@ -62,7 +62,7 @@ public:
   /* Sets the precondition of this action schema. */
   void set_precondition(const StateFormula& precondition);
 
-  /* Sets the resource precondition of this action schema. */
+  /* Sets the continuous variable precondition of this action schema. */
   void set_resprecondition(std::vector<double> *respreondition);
 
   /* Sets the effect of this action schema. */
@@ -105,7 +105,7 @@ private:
   const StateFormula* precondition_;
   /* Action effect. */
   const Effect* effect_;
-  /* Action resource preconditions */
+  /* Action continuous variables preconditions */
   std::vector<double> *resprecondition_;
 };
 

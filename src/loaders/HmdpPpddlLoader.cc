@@ -102,55 +102,55 @@ const Domain* HmdpPpddlLoader::getDomain(const int &dm)
   exit (-1);
 }
 
-std::vector <std::pair<std::string, std::pair<double, double> > >* HmdpPpddlLoader::getResources()
+std::vector <std::pair<std::string, std::pair<double, double> > >* HmdpPpddlLoader::getCVariables()
 {
-  return HmdpPpddlLoader::getResources(0);
+  return HmdpPpddlLoader::getCVariables(0);
 }
 
-std::vector <std::pair<std::string, std::pair<double, double> > >* HmdpPpddlLoader::getResources (const int &dm)
+std::vector <std::pair<std::string, std::pair<double, double> > >* HmdpPpddlLoader::getCVariables (const int &dm)
 {
   /* consider the first domain only */
   //Domain::DomainMap::const_iterator di = Domain::begin ();
   //const Domain *domain = (*di).second;
   const Domain *domain = HmdpPpddlLoader::getDomain(dm);
   const FunctionTable &functable = domain->functions ();
-  if (functable.getNResources ())
+  if (functable.getNCVariables ())
     {
-      return const_cast<FunctionTable&> (functable).getResources ();
+      return const_cast<FunctionTable&> (functable).getCVariables ();
     }
   else
     {
-      std::cerr << "[Error]: HmdpPpddlLoader::getResources: no resources found. Exiting.\n";
+      std::cerr << "[Error]: HmdpPpddlLoader::getCVariables: no continuous state-space found. Exiting.\n";
       exit (-1);
     }
 }
 
-std::pair<std::string, std::pair<double, double> >& HmdpPpddlLoader::getResource (const std::string &rsc)
+std::pair<std::string, std::pair<double, double> >& HmdpPpddlLoader::getCVariable (const std::string &rsc)
 {
-  return HmdpPpddlLoader::getResource(rsc, 0);
+  return HmdpPpddlLoader::getCVariable(rsc, 0);
 }
 
-std::pair<std::string, std::pair<double, double> >& HmdpPpddlLoader::getResource (const std::string &rsc, const int &dm)
+std::pair<std::string, std::pair<double, double> >& HmdpPpddlLoader::getCVariable (const std::string &rsc, const int &dm)
 {
   std::vector <std::pair<std::string, std::pair<double, double> > > *br
-    = HmdpPpddlLoader::getResources (dm);
+    = HmdpPpddlLoader::getCVariables (dm);
   for (size_t i=0; i<br->size (); i++)
     if ((*br)[i].first == rsc)
       return (*br)[i];
-  std::cout << "[Error]:HmdpPpddlLoader::getResource: cant't find resource: " 
+  std::cout << "[Error]:HmdpPpddlLoader::getCVariable: cant't find continuous variable: " 
 	    << rsc << ".Exiting.\n";
   exit (-1);
 }
 
-std::pair<std::string, std::pair<double, double> >& HmdpPpddlLoader::getResource (const int &pos)
+std::pair<std::string, std::pair<double, double> >& HmdpPpddlLoader::getCVariable (const int &pos)
 {
-  return HmdpPpddlLoader::getResource(pos, 0);
+  return HmdpPpddlLoader::getCVariable(pos, 0);
 }
 
-std::pair<std::string, std::pair<double, double> >& HmdpPpddlLoader::getResource (const int &pos, const int &dm)
+std::pair<std::string, std::pair<double, double> >& HmdpPpddlLoader::getCVariable (const int &pos, const int &dm)
 {
   std::vector <std::pair<std::string, std::pair<double, double> > > *br
-    = HmdpPpddlLoader::getResources (dm);
+    = HmdpPpddlLoader::getCVariables (dm);
   return (*br)[pos];
 }
 
@@ -172,7 +172,7 @@ HybridTransition* HmdpPpddlLoader::convertAction (const Action &act, const size_
   /* action id */
   const short aid = static_cast<const short> (act.id ());
 
-    /* action precondition on resources */
+    /* action precondition on continuous variables */
   double *prec_low = new double[nrsc]; double *prec_high = new double[nrsc];
   HmdpPpddlLoader::fillUpBounds (prec_low, prec_high, dm);
   HmdpPpddlLoader::convertRscSFToBounds (act.precondition (), prec_low, prec_high, dm);
@@ -340,7 +340,7 @@ int HmdpPpddlLoader::convertRscExprToBounds (const Comparison &comp,
   const Expression &e1 = comp.expr1 ();
   const Expression &e2 = comp.expr2 ();
 
-  /* check for resources */
+  /* check for continuous Variables */
   double rvalue = 0.0; std::string resource;
   
   if (e1.getType () == EXPR_APP)
@@ -351,27 +351,27 @@ int HmdpPpddlLoader::convertRscExprToBounds (const Comparison &comp,
       if (e2.getType () == EXPR_APP)
 	{
 	  const Application& app2 = static_cast<const Application&> (e2);
-	  if (domain->functions ().isResource (app1.function ()))
+	  if (domain->functions ().isCVariable (app1.function ()))
 	    {
 	      resource = domain->functions ().name (app1.function ());
 	      rvalue = HmdpPpddlLoader::findFunctionValue (app2.function (), dm);
 	    }
-	  else if (domain->functions ().isResource (app2.function ()))
+	  else if (domain->functions ().isCVariable (app2.function ()))
 	    {
 	      resource = domain->functions ().name (app2.function ());
 	      rvalue = HmdpPpddlLoader::findFunctionValue (app1.function (), dm);
 	    }
-	  else return 0;  /* expression does not contain a resource */
+	  else return 0;  /* expression does not contain a continuous variable */
 	}
       else if (e2.getType () == EXPR_VAL)
 	{
-	  if (domain->functions ().isResource (app1.function ()))
+	  if (domain->functions ().isCVariable (app1.function ()))
 	    {
 	      const Value &val2 = static_cast<const Value&> (e2);
 	      resource = domain->functions ().name (app1.function ());
 	      rvalue = val2.value ().double_value ();
 	    }
-	  else return 0; /* no resource */
+	  else return 0; /* no continuous variable */
 	}
     }
   else 
@@ -737,7 +737,7 @@ void HmdpPpddlLoader::checkCTTiles (const size_t &nrsc, double *prec_low, double
 				    std::vector<discretizationType*> &disczs)
 {
   size_t neff = means.size ();
-  bool fsTileLow = false;  /* if tile covers all resource space: lower bound. */
+  bool fsTileLow = false;  /* if tile covers all continuous space-space: lower bound. */
   bool fsTileHigh = false;  /* upper bound */
 
   double *minpos = new double[nrsc];
@@ -753,7 +753,7 @@ void HmdpPpddlLoader::checkCTTiles (const size_t &nrsc, double *prec_low, double
     {
       size_t flag_low = 0, flag_high = 0;
       
-      /* check for tile bounds & resource space coverage */
+      /* check for tile bounds & continuous state-space coverage */
       for (size_t j=0; j<nrsc; j++)
 	{
 	  if (prec_low[j] > low[i][j])
@@ -810,7 +810,7 @@ void HmdpPpddlLoader::checkCTTiles (const size_t &nrsc, double *prec_low, double
 	      lpos[j] = prec_low[j];
 	      hpos[j] = minpos[j];
 	      
-	      /* fake a distribution over resources */
+	      /* fake a distribution over continuous variables */
 	      mean[j] = 0.0; variance[j] = 0.0; distrib[j] = NONE;
 	      discz[j] = HmdpPpddlLoader::m_defaultDiscretizationType;
 	    }
@@ -849,7 +849,6 @@ void HmdpPpddlLoader::convertRscPdf (const AssignmentEffect &assignEff,
 {
   found = false;
   const Assignment &assign = assignEff.assignment ();
-  //Domain::DomainMap::const_iterator di = Domain::begin ();
   const Domain *domain = getDomain(dm);
   rsc = domain->functions ().name (assign.application ().function ());
   int rscpos;
@@ -1011,7 +1010,7 @@ int HmdpPpddlLoader::getRscPosition(const std::string &rsc)
 int HmdpPpddlLoader::getRscPosition (const std::string &rsc,
 				     const int &dm)
 {
-  std::vector <std::pair<std::string, std::pair<double,double> > >* rscs = HmdpPpddlLoader::getResources(dm);
+  std::vector <std::pair<std::string, std::pair<double,double> > >* rscs = HmdpPpddlLoader::getCVariables(dm);
   
   //debug
   //std::cout << "rscs size: " << rscs->size () << std::endl;
@@ -1051,7 +1050,7 @@ void HmdpPpddlLoader::setFunctionValueInMap (const int &pos, ValueMap &values,
 					     const double &val, const int &pb)
 {
   //BEWARE: same domain as problem number...
-  std::string fname = HmdpPpddlLoader::getResource (pos, pb).first;
+  std::string fname = HmdpPpddlLoader::getCVariable (pos, pb).first;
   const Problem *problem = HmdpPpddlLoader::getProblem (pb);
   std::pair<Function, bool> fct = problem->domain ().functions ().find_function (fname);
   
@@ -1092,7 +1091,7 @@ double HmdpPpddlLoader::getFunctionValueInMap (const int &pos, const ValueMap &v
 					       const int &pb)
 {
   //BEWARE: same domain as problem number...
-  std::string fname = HmdpPpddlLoader::getResource (pos, pb).first;
+  std::string fname = HmdpPpddlLoader::getCVariable (pos, pb).first;
   const Problem *problem = HmdpPpddlLoader::getProblem(pb);
   std::pair<Function, bool> fct = problem->domain ().functions ().find_function (fname);
   
@@ -1122,7 +1121,7 @@ void HmdpPpddlLoader::fillUpBounds (double *low, double *high)
 void HmdpPpddlLoader::fillUpBounds (double *low, double *high,
 				    const int &dm)
 {
-  std::vector <std::pair<std::string, std::pair<double,double> > > *bds = HmdpPpddlLoader::getResources(dm);
+  std::vector <std::pair<std::string, std::pair<double,double> > > *bds = HmdpPpddlLoader::getCVariables(dm);
   std::vector <std::pair<std::string, std::pair<double,double> > >::iterator it;
   size_t i=0;
   for (it = bds->begin (); it != bds->end (); it++)
@@ -1488,7 +1487,7 @@ void HmdpPpddlLoader::createInitialState (ValueMap &values, AtomSet &atoms,
     }
   }
   
-  /* non-static functions / set MAX value to resources. */
+  /* non-static functions / set MAX value to continuous variables. */
   for (ValueMap::const_iterator vi = problem->init_values().begin();
        vi != problem->init_values().end(); vi++) {
     Function function = (*vi).first->function();
@@ -1496,8 +1495,8 @@ void HmdpPpddlLoader::createInitialState (ValueMap &values, AtomSet &atoms,
       values.insert(*vi);
       //}
     
-    /* resources are set to their MAX value. */
-    if (problem->domain().functions().isResource(function))
+    /* continuous variables are set to their MAX value. */
+    if (problem->domain().functions().isCVariable(function))
       { 
 	std::unordered_map<const Application*, Rational>::iterator vmi;
 	for (vmi = values.begin (); vmi != values.end (); vmi++)
@@ -1507,7 +1506,7 @@ void HmdpPpddlLoader::createInitialState (ValueMap &values, AtomSet &atoms,
 		= HmdpPpddlLoader::getProblem(pb)->domain().functions().name (function);
 	      //(*vmi).second = Rational (lround (HmdpPpddlLoader::getResource (rscname).second.second), 1);
 	      //BEWARE: same domain as problem number...
-	      (*vmi).second = Rational (HmdpPpddlLoader::getResource (rscname,pb).second.second);
+	      (*vmi).second = Rational (HmdpPpddlLoader::getCVariable (rscname,pb).second.second);
 	      break;
 	    }
       }
@@ -1522,7 +1521,7 @@ MDDiscreteDistribution* HmdpPpddlLoader::buildInitialRscDistribution (const Prob
 MDDiscreteDistribution* HmdpPpddlLoader::buildInitialRscDistribution (const ProbabilityDistMap &pdm, const int &dm)
 {
   std::vector<std::pair<std::string, std::pair<double, double> > > *rscs
-    = HmdpPpddlLoader::getResources(dm);
+    = HmdpPpddlLoader::getCVariables(dm);
   DiscreteDistribution **ndds = new DiscreteDistribution*[rscs->size ()];
   
   for (ProbabilityDistMap::const_iterator pi = pdm.begin ();
@@ -1644,7 +1643,7 @@ MDDiscreteDistribution* HmdpPpddlLoader::buildInitialRscDistribution (const int 
 {
   //BEWARE: same domain as problem number...
   std::vector<std::pair<std::string, std::pair<double, double> > > *rscs
-    = HmdpPpddlLoader::getResources (pb);
+    = HmdpPpddlLoader::getCVariables (pb);
   int i=0; double one = 1.0;
   DiscreteDistribution **ndds = new DiscreteDistribution*[rscs->size ()];
   std::vector<std::pair<std::string, std::pair<double, double> > >::iterator it;
@@ -1688,7 +1687,7 @@ void HmdpPpddlLoader::applyNonResourceEffectChanges (const Effect& ef, ValueMap 
 	   ai != assignments.end (); ai++)
 	{
 	  Function function = (*ai)->application ().function (); 
-	  if (!HmdpPpddlLoader::getProblem(pb)->domain().functions().isResource(function))
+	  if (!HmdpPpddlLoader::getProblem(pb)->domain().functions().isCVariable(function))
 	    (*ai)->affect (values);
 	  /*else
 	    { */ /* resources are set to their MAX value. */
@@ -1699,7 +1698,7 @@ void HmdpPpddlLoader::applyNonResourceEffectChanges (const Effect& ef, ValueMap 
 		std::string rscname 
 		= HmdpPpddlLoader::getFirstProblem()->domain().functions().name (function);
 		(*vmi).second
-		= Rational (lround (HmdpPpddlLoader::getResource (rscname).second.second), 1);
+		= Rational (lround (HmdpPpddlLoader::getCVariable (rscname).second.second), 1);
 		break;
 		}
 		} */

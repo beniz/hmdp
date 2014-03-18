@@ -183,8 +183,8 @@ static Term make_term(const std::string* name);
 static void make_predicate(const std::string* name);
 /* Creates a function with the given name. */
 static void make_function(const std::string* name);
-/* Creates a resource as a function with the given name. */
- static void make_resource (const std::string *name, const Rational *low, 
+/* Creates a continuous variable as a function with the given name. */
+ static void make_cvariable (const std::string *name, const Rational *low, 
 			    const Rational *high);
 /* Creates an action with the given name. */
 static void make_action(const std::string* name);
@@ -254,7 +254,7 @@ static void set_default_metric();
 %}
 
 %token DEFINE DOMAIN_TOKEN PROBLEM
-%token REQUIREMENTS TYPES CONSTANTS PREDICATES FUNCTIONS RESOURCES
+%token REQUIREMENTS TYPES CONSTANTS PREDICATES FUNCTIONS CSPACE
 %token STRIPS TYPING NEGATIVE_PRECONDITIONS DISJUNCTIVE_PRECONDITIONS EQUALITY
 %token EXISTENTIAL_PRECONDITIONS UNIVERSAL_PRECONDITIONS
 %token QUANTIFIED_PRECONDITIONS CONDITIONAL_EFFECTS FLUENTS ADL
@@ -308,7 +308,7 @@ static void set_default_metric();
 %type <strs> name_seq variable_seq
 %type <type> type_spec type
 %type <types> types
-%type <str> type_name predicate function name variable resource 
+%type <str> type_name predicate function name variable cvariable 
 %type <str> DEFINE DOMAIN_TOKEN PROBLEM GOAL_PROBABILITY
 %type <str> WHEN NOT AND OR IMPLY EXISTS FORALL PROBABILISTIC
 %type <str> ASSIGN SCALE_UP SCALE_DOWN INCREASE DECREASE MINIMIZE MAXIMIZE 
@@ -354,11 +354,11 @@ domain_body2 : types_def
 domain_body3 : constants_def
              | predicates_def
              | functions_def
-             | resources_def
-             | resources_def domain_body6   /* resources comes after functions */
+             | cspace_def
+             | cspace_def domain_body6   /* cspace comes after functions */
              | constants_def domain_body4
              | predicates_def domain_body5
-             | functions_def resources_def domain_body6
+             | functions_def cspace_def domain_body6
              | functions_def domain_body6
              | structure_defs
              ;
@@ -366,10 +366,10 @@ domain_body3 : constants_def
 /* no more constants */
 domain_body4 : predicates_def
              | functions_def
-             | resources_def
-             | resources_def domain_body8
+             | cspace_def
+             | cspace_def domain_body8
              | predicates_def domain_body7
-             | functions_def resources_def domain_body8
+             | functions_def cspace_def domain_body8
              | functions_def domain_body8
              | structure_defs
              ;
@@ -377,15 +377,15 @@ domain_body4 : predicates_def
 /* no more predicates */
 domain_body5 : constants_def
              | functions_def
-             | resources_def
-             | resources_def domain_body9
+             | cspace_def
+             | cspace_def domain_body9
              | constants_def domain_body7
-             | functions_def resources_def domain_body9
+             | functions_def cspace_def domain_body9
              | functions_def domain_body9
              | structure_defs
              ;
 
-/* no more functions or resources */
+/* no more functions or cspace */
 domain_body6 : constants_def
              | predicates_def
              | constants_def domain_body8
@@ -395,9 +395,9 @@ domain_body6 : constants_def
 
 /* only functions or structure defs */
 domain_body7 : functions_def 
-             | resources_def
-             | resources_def structure_def
-             | functions_def resources_def structure_defs
+             | cspace_def
+             | cspace_def structure_def
+             | functions_def cspace_def structure_defs
              | functions_def structure_defs
              | structure_defs
              ;
@@ -492,7 +492,7 @@ predicates_def : '(' PREDICATES predicate_decls ')'
 functions_def : '(' FUNCTIONS { require_fluents(); } function_decls ')'
               ;
 
-resources_def : '(' RESOURCES resource_decls ')'
+cspace_def : '(' CSPACE cvariable_decls ')'
 
 /* ====================================================================== */
 /* Predicate and function declarations. */
@@ -521,18 +521,18 @@ function_decl : '(' function { make_function($2); } variables ')'
                   { parsing_function = false; }
               ;
 
-/* Resources as functions */
+/* Cspace as functions */
 
-resource_decls : /* empty */
-               | resource_decl_seq
-               | resource_decl_seq resource_decls
-               ;
+cvariable_decls : /* empty */
+/*            | cvariable_decl_seq */
+                | cvariable_decl_seq cvariable_decls
+		;
 
-resource_decl_seq : resource_decl
-                  | resource_decl_seq resource_decl
-                  ;
+cvariable_decl_seq : cvariable_decl
+/*                   | cvariable_decl_seq cvariable_decl */
+                   ;
 
-resource_decl : '(' resource bound bound { make_resource ($2, $3, $4); } variables ')'
+cvariable_decl : '(' cvariable bound bound { make_cvariable ($2, $3, $4); } variables ')'
                     {parsing_function = false;} 
               ;
 
@@ -584,7 +584,7 @@ prob_effs : probability eff_formula
 		add_effect_outcome(*$$, $1, *$2);
 	      }
           | prob_effs probability eff_formula
-              { $$ = $1; add_effect_outcome(*$$, $2, *$3); }
+	  { $$ = $1;add_effect_outcome(*$$, $2, *$3); }
           ;
 
 probability : NUMBER
@@ -661,18 +661,18 @@ init_element : atomic_name_formula { problem->add_init_atom(*$1); }
                  { problem->add_init_effect(*$3); }
              | '(' ground_f_head distribution_exp ')'
 { problem->add_init_prob_dist ($2, $3);
-  /* set a 'static' initial resource value as the MAX bound of the resource.
+  /* set a 'static' initial continuous variable value as the MAX bound of the variable.
      This is used only for testing actions applicability in the parser tests,
      and the hmdp internal full engine. Not in CAO*. */
-  if (problem->domain ().functions ().isResource ($2->function ()))
+  if (problem->domain ().functions ().isCVariable ($2->function ()))
     {
       const std::string &rscname 
 	= problem->domain ().functions ().name ($2->function ());
       double rsc_max_value
-	= problem->domain ().functions ().getResourceBounds (rscname).second;
+	= problem->domain ().functions ().getCVariableBounds (rscname).second;
       problem->add_init_value (*$2, Rational (rsc_max_value));
     }
-  else yyerror ("Initial state probability distribution must be over a resource.");
+  else yyerror ("Initial state probability distribution must be over a continuous variable.");
 }
 ;
 
@@ -682,7 +682,7 @@ prob_inits : probability simple_init
 		 add_effect_outcome(*$$, $1, *$2);
 	       }
            | prob_inits probability simple_init
-               { $$ = $1; add_effect_outcome(*$$, $2, *$3); }
+	   { $$ = $1; add_effect_outcome(*$$, $2, *$3); }
            ;
 
 simple_init : one_init
@@ -1016,7 +1016,7 @@ name : DEFINE | DOMAIN_TOKEN | PROBLEM
 variable : VARIABLE
          ;
 
-resource : name
+cvariable : name
          ;
 
 bound : NUMBER
@@ -1206,15 +1206,15 @@ static void make_function(const std::string* name) {
   delete name;
 }
 
-/* Creates a resource as a function with the given name. */
-static void make_resource (const std::string *name, const Rational *low,
-			   const Rational *high)
+/* Creates a continuous variable as a function with the given name. */
+static void make_cvariable (const std::string *name, const Rational *low,
+			    const Rational *high)
 {
   repeated_function = false;
   std::pair<Function, bool> f = domain->functions().find_function(*name);
   if (!f.second) {
-    f.first = domain->functions().add_resource(*name, low->double_value (), 
-					       high->double_value ());
+    f.first = domain->functions().add_cvariable(*name, low->double_value (), 
+						high->double_value ());
   } 
   else {
     repeated_function = true;
@@ -1286,6 +1286,7 @@ static void add_effect_outcome(ProbabilisticEffect& peffect,
     yywarning("assuming `:probabilistic-effects' requirement");
     requirements->probabilistic_effects = true;
   }
+  //std::cout << "numerator: " << p->numerator() << " -- denominator: " << p->denominator() << " -- value: " << p->double_value() << std::endl;
   if (*p < 0 || *p > 1) {
     yyerror("outcome probability needs to be in the interval [0,1]");
   }

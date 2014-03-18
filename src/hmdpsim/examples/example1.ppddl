@@ -26,8 +26,8 @@
 		(DiscInterval)
 		(DiscEpsilon))
 
-    (:resources (X 0 10)
-		(Y 0 10))
+    (:cspace (X 0 10)
+	     (Y 0 10))
 
     (:action Move
 	     :precondition (Living)

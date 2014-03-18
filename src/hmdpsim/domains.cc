@@ -172,10 +172,10 @@ std::ostream& operator<<(std::ostream& os, const Domain& d) {
     }
   }
   Domain& nc_d = const_cast<Domain&> (d);
-  os << std::endl << "resources:";
+  os << std::endl << "continuous variables:";
   std::vector<std::pair<std::string, std::pair<double,double> > >::iterator it;
-  for (it=nc_d.functions().getResources()->begin ();
-       it != nc_d.functions().getResources()->end (); it++)
+  for (it=nc_d.functions().getCVariables()->begin ();
+       it != nc_d.functions().getCVariables()->end (); it++)
     os << std::endl << "  (" << (*it).first
        << " [" << (*it).second.first << "," << (*it).second.second
        << "]";

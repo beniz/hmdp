@@ -60,7 +60,7 @@ problem				return make_string(yytext, PROBLEM);
 :constants			return CONSTANTS;
 :predicates			return PREDICATES;
 :functions			return FUNCTIONS;
-:resources                      return RESOURCES;
+:cspace                         return CSPACE;
 :strips				return STRIPS;
 :typing				return TYPING;
 :negative-preconditions		return NEGATIVE_PRECONDITIONS;
@@ -143,7 +143,7 @@ static int make_string(const char* s, int token) {
 
 /* Makes a number of the given string, and return the NUMBER token. */
 static int make_number(const char* s) {
-  yylval.num = new Rational(s);
+  yylval.num = new Rational(strtod(s,NULL));
   return NUMBER;
 }
 

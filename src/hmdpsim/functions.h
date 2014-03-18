@@ -18,7 +18,7 @@
  */
 
 /**
- * - Added resources as bounded pddl functions.
+ * - Added continuous variables as bounded pddl functions.
  * \author Emmanuel Benazera beniz@droidnik.fr
  */
 
@@ -65,9 +65,9 @@ public:
      function. */
   Function add_function(const std::string& name);
 
-  /* Adds a resource with the given name to this table and returns
-     the resource. */
-  Function add_resource(const std::string& name, double low, double high);
+  /* Adds a continuous variable with the given name to this table and returns
+     the variable. */
+  Function add_cvariable(const std::string& name, double low, double high);
 
   /* Returns the function with the given name.  If no function with
      the given name exists, false is returned in the second part of
@@ -110,19 +110,19 @@ public:
     return static_functions_.find(function) != static_functions_.end();
   }
 
-  /* Returns the number of resources among functions */
-  size_t getNResources () const { return resources_.size (); }
+  /* Returns the number of continuous variables among functions */
+  size_t getNCVariables () const { return cvariables_.size (); }
 
-  /* Returns the map of resources */
-  std::vector<std::pair<std::string, std::pair<double,double> > >* getResources ()
-  { return &resources_; }
+  /* Returns the map of continuous variables */
+  std::vector<std::pair<std::string, std::pair<double,double> > >* getCVariables ()
+  { return &cvariables_; }
 
-  const std::pair<double,double>& getResourceBounds (const std::string &rscname) const;
+  const std::pair<double,double>& getCVariableBounds (const std::string &rscname) const;
 
   /* Tests if a function is a resource */
-  bool isResource (const std::string &name) const;
-  bool isResource (Function function) const 
-  { return isResource (name (function)); }
+  bool isCVariable (const std::string &name) const;
+  bool isCVariable (Function function) const 
+  { return isCVariable (name (function)); }
 
   /* Returns function table size. */
   size_t getSize () const { return names_.size (); }
@@ -144,8 +144,8 @@ protected:
   std::vector<TypeList> parameters_;
   /* Static functions. */
   FunctionSet static_functions_;
-  /* Resources (among functions) bounds */
-  std::vector <std::pair<std::string, std::pair<double,double> > > resources_;
+  /* Continuous variables (among functions) bounds */
+  std::vector <std::pair<std::string, std::pair<double,double> > > cvariables_;
 };
 
 } /* end of namespace */

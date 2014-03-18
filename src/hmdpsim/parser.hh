@@ -54,7 +54,7 @@ extern int yydebug;
      CONSTANTS = 263,
      PREDICATES = 264,
      FUNCTIONS = 265,
-     RESOURCES = 266,
+     CSPACE = 266,
      STRIPS = 267,
      TYPING = 268,
      NEGATIVE_PRECONDITIONS = 269,
@@ -131,7 +131,7 @@ extern int yydebug;
 #define CONSTANTS 263
 #define PREDICATES 264
 #define FUNCTIONS 265
-#define RESOURCES 266
+#define CSPACE 266
 #define STRIPS 267
 #define TYPING 268
 #define NEGATIVE_PRECONDITIONS 269

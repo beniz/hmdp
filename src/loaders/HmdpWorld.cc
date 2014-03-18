@@ -47,7 +47,7 @@ void HmdpWorld::loadWorld (const char *filename)
 	exit (-1);
       
       /* set resources */
-      HmdpWorld::m_boundedResources = *HmdpPpddlLoader::getResources ();
+      HmdpWorld::m_boundedResources = *HmdpPpddlLoader::getCVariables ();
       m_rscLow = new double[HmdpWorld::m_boundedResources.size ()];
       m_rscHigh = new double[HmdpWorld::m_boundedResources.size ()];
       HmdpPpddlLoader::fillUpBounds (m_rscLow, m_rscHigh);

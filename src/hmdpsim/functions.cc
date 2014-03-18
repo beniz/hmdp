@@ -37,18 +37,17 @@ Function FunctionTable::add_function(const std::string& name) {
   return function;
 }
 
-/* a resource is inserted in both the function and the resource table. */
-Function FunctionTable::add_resource(const std::string& name, double low, double high) {
-  Function resource = last_function() + 1;
+/* a continuous variable is inserted in both the function and the continuous variable table. */
+Function FunctionTable::add_cvariable(const std::string& name, double low, double high) {
+  Function cvariable = last_function() + 1;
   names_.push_back(name);
   std::pair<double, double> bounds = std::pair<double,double> (low, high);
-  //resources_.insert(std::make_pair(name, bounds));
-  resources_.push_back (std::make_pair(name, bounds));
-  functions_.insert(std::make_pair(name, resource));
+  cvariables_.push_back (std::make_pair(name, bounds));
+  functions_.insert(std::make_pair(name, cvariable));
   parameters_.push_back(TypeList());
-  static_functions_.insert(resource);
+  static_functions_.insert(cvariable);
   next++;
-  return resource;
+  return cvariable;
 }
 
 /* Returns the function with the given name.  If no function with
@@ -64,11 +63,11 @@ FunctionTable::find_function(const std::string& name) const {
   }
 }
 
-/* Tests if a function is a resource. */
-bool FunctionTable::isResource (const std::string &name) const
+/* Tests if a function is a continuous variable. */
+bool FunctionTable::isCVariable (const std::string &name) const
 {
   std::vector <std::pair<std::string, std::pair<double,double> > >::const_iterator it;
-  for (it=resources_.begin (); it != resources_.end (); it++)
+  for (it=cvariables_.begin (); it != cvariables_.end (); it++)
     {
       if (name == (*it).first)
 	return true;
@@ -76,14 +75,14 @@ bool FunctionTable::isResource (const std::string &name) const
   return false;
 }
 
-const std::pair<double,double>& FunctionTable::getResourceBounds (const std::string &rscname) const
+const std::pair<double,double>& FunctionTable::getCVariableBounds (const std::string &rscname) const
 {
-  for (size_t i=0; i<resources_.size (); i++)
+  for (size_t i=0; i<cvariables_.size (); i++)
     {
-      if (resources_[i].first == rscname)
-	return resources_[i].second;
+      if (cvariables_[i].first == rscname)
+	return cvariables_[i].second;
     }
-  std::cout << "[Error]:FunctionTable::getResource: resource not found: " 
+  std::cout << "[Error]:FunctionTable::getCVariable: continuous variable not found: " 
 	    << rscname << ". Exiting.\n";
   exit (-1);
 }
