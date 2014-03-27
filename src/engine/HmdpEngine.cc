@@ -20,6 +20,7 @@
 #include <iomanip>
 #include <limits>
 #include <queue>
+#include "fiboqueue.h"
 
 namespace hmdp_engine
 {
@@ -214,21 +215,33 @@ void HmdpEngine::prioritizedValueIteration(HmdpState *initState,
   // fillup the set of all states with dfs.
   HmdpEngine::DepthFirstSearchBackupCSD(initState,false,false,true,max_dfs_recur);
 
-  std::priority_queue<HmdpState*,std::vector<HmdpState*>,CompareStatePriorities> pqueue;
+  FibQueue<double> pqueue;
+  std::unordered_map<int,FibHeap<double>::FibNode*> hstates;
+  std::unordered_map<int,FibHeap<double>::FibNode*>::iterator hsit;
+    
   // initial filling of the queue.
   for (auto hit=HmdpEngine::m_states.begin();hit!=HmdpEngine::m_states.end();++hit)
     {
-      (*hit).second->setPriority(epsilon);
-      pqueue.push((*hit).second);
+      (*hit).second->setPriority(-epsilon);
+      hstates.insert(std::pair<unsigned int,FibHeap<double>::FibNode*>((*hit).second->getStateIndex(),
+								       pqueue.push((*hit).second->getPriority(),(*hit).second)));
     }
   
   while(!pqueue.empty())
     {
       // pick up the top state(s) from the priority queue.
-      HmdpState *hst = pqueue.top();
+      HmdpState *hst = static_cast<HmdpState*>(pqueue.topNode()->payload);
+      if ((hsit=hstates.find(hst->getStateIndex()))!=hstates.end())
+	hstates.erase(hsit);
+      else
+	{
+	  std::cerr << "[Fatal]: cannot find state " << hst->getStateIndex() << " in side priority set\n";
+	  exit(1);
+	}
       pqueue.pop();
       
       // back it up.
+      //std::cerr << "backing up state " << hst->getStateIndex() << " with priority " << hst->getPriority() << std::endl;
       HmdpEngine::BspBackup(hst,true,gamma);
       
       // update priorities of all its predecessors. (requires additional structure).
@@ -242,21 +255,31 @@ void HmdpEngine::prioritizedValueIteration(HmdpState *initState,
 	      HmdpState *pred_hst = (*pit).second;
 	      //std::cerr << "residual: " << hst->getResidual() << " -- prob " << (*pit).first << " -- tentative new priority: " << (*pit).first*hst->getResidual() << std::endl;
 	      if (hst != pred_hst)
-		pred_hst->setPriority(std::max(pred_hst->getPriority(),(*pit).first*hst->getResidual()));
-	      else pred_hst->setPriority((*pit).first*hst->getResidual()); // TODO: this does not max over all outcomes from itself.
-	      if (pred_hst->getPriority() > epsilon)
-		pqueue.push(pred_hst);
+		pred_hst->setPriority(std::min(pred_hst->getPriority(),-(*pit).first*hst->getResidual()));
+	      else pred_hst->setPriority(-(*pit).first*hst->getResidual()); // TODO: this does not max over all outcomes from itself.
+	      if (pred_hst->getPriority() < -epsilon)
+		{
+		  if ((hsit=hstates.find(pred_hst->getStateIndex()))!=hstates.end())
+		    {
+		      //std::cerr << "updating state " << pred_hst->getStateIndex() << " with priority " << pred_hst->getPriority() << std::endl;
+		      pqueue.decrease_key((*hsit).second,pred_hst->getPriority());
+		    }
+		  else
+		    {
+		      //std::cerr << "reinserting state " << pred_hst->getStateIndex() << " with priority " << pred_hst->getPriority() << std::endl;
+		      hstates.insert(std::pair<unsigned int,FibHeap<double>::FibNode*>(pred_hst->getStateIndex(),pqueue.push(pred_hst->getPriority(),pred_hst)));
+		    }
+		}
 	      ++pit;
 	    }
 	  ++hit;
 	}
       
       // update priority queue (inefficient, requires a Fibonacci heap instead).
-      std::make_heap(const_cast<HmdpState**>(&pqueue.top()),const_cast<HmdpState**>(&pqueue.top())+pqueue.size(),CompareStatePriorities());
       double expectation = initState->getVF()->computeExpectation(initState->getCSD(),
 								  HmdpWorld::getRscLowBounds (),
 								  HmdpWorld::getRscHighBounds ());
-      std::cerr << "iteration #" << i << " -- state: " << hst->getStateIndex() << " -- priority: " << hst->getPriority() << " -- expected: " << expectation << std::endl;
+      std::cerr << "iteration #" << i << " -- state: " << hst->getStateIndex() << " -- priority: " << hst->getPriority() << " -- expected: " << expectation << " -- queue size: " << pqueue.size() << std::endl;
       ++i;
       if (T > 0 && i >= T)
 	break;

@@ -178,7 +178,12 @@ class HmdpState
       return s1->m_priority > s2->m_priority;
     }
   };
- 
+
+  /*bool operator<(const HmdpState &s1, const HmdpState &s2)
+  {
+      return s1.m_priority < s2.m_priority;
+      };*/
+  
 } /* end of namespace */
 
 #endif

@@ -105,7 +105,9 @@ void BspTree::deleteBspTree (BspTree *bt)
       bt->m_lt = 0;
       bt->m_ge = 0;
     }
-  delete bt;  /* destroy node (virtual) */
+  if (bt)
+    delete bt;  /* destroy node (virtual) */
+  bt = 0;
 }
 
 int BspTree::countLeaves () const
