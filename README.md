@@ -16,6 +16,9 @@ Dependencies:
 hmdp is designed and implemented by Emmanuel Benazera.
 
 ### Build
+Beware of dependencies, typically on Debian/Ubuntu Linux, do:
+sudo apt-get install libgoogle-glog-dev libgflags-dev libeigen3-dev
+
 For compiling with basic options enabled:
 ```
 ./autogen.sh
