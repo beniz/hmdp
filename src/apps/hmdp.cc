@@ -43,7 +43,7 @@ DEFINE_bool(show_discrete_states,false,"Whether to output the discrete state val
 DEFINE_string(point_based_output_step,"","Comma-separated list of stepsizes for point-based discretized output of value functions in dat and mat format (default is 1.0 in every dimension)");
 DEFINE_bool(print_world,false,"Prints full MDP world loaded from PPDDL (default is false)");
 DEFINE_bool(truncate_negative_ct_outcomes,false,"Truncates the negative part of continuous transition outcomes: this is useful when continuous spate-space models non-replenishable resources");
-DEFINE_string(algo,"dfs","Algorithm for value function approximation among dfs (default, depth-first search for finite-horizon and resource problems), vi (value iteration)");
+DEFINE_string(algo,"dfs","Algorithm for value function approximation among dfs (default, depth-first search for finite-horizon and resource problems), vi (value iteration), psvi (prioritized sweeping value iteration)");
 DEFINE_int32(T,-1,"Horizon for value iteration (-1 for infinite is default)");
 DEFINE_bool(one_time_reward,false,"Whether reward can only be reaped once (can be part of the model, here to simplify testing and modeling");
 DEFINE_double(gamma,1.0,"Discount factor");
@@ -117,6 +117,7 @@ int main (int argc, char *argv[])
   if (FLAGS_with_convol)
     std::cout << "+ convolutions ";
   std::cout << "time: " << time << std::endl;
+  std::cout << "expected value: " << HmdpWorld::getFirstInitialState()->getVF()->computeExpectation(HmdpWorld::getFirstInitialState()->getCSD(),HmdpWorld::getRscLowBounds(),HmdpWorld::getRscHighBounds()) << std::endl;
   std::cout << "total number of discrete states (dfs): " << HmdpEngine::getNStates () << std::endl;
 
   // discretization for point based vf output (dat & mat).
