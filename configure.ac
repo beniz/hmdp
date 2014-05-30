@@ -22,7 +22,6 @@ AC_PROG_MAKE_SET
 AC_PROG_AWK
 AM_PROG_LEX
 AC_PROG_YACC
-AC_PROG_RANLIB
 
 #options
 #- linear programming
