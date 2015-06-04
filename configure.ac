@@ -73,7 +73,7 @@ SAVE_CFLAGS="$CFLAGS"
 SAVE_LIBS="$LIBS"
 AC_ARG_WITH(gflags, AS_HELP_STRING[--with-gflags=GFLAGS_DIR],
   GFLAGS_CFLAGS="-I${with_gflags}/include"
-  GFLAGS_LIBS="-L${with_gflags}/lib -lgflags"
+  GFLAGS_LIBS="-L${with_gflags}/lib -lgflags -lpthread"
   CFLAGS="$CFLAGS $GFLAGS_CFLAGS"
   LIBS="$LIBS $GFLAGS_LIBS"
 )
